@@ -1,6 +1,9 @@
 """Cross-split grouping must not be bypassed by presentation differences."""
 import copy
 import shutil
+import subprocess
+import sys
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -85,6 +88,42 @@ def test_failed_freeze_does_not_leave_an_unusable_partial_dataset(tmp_path, monk
     with pytest.raises(OSError, match="simulated disk failure"):
         open_benchmark.freeze(dataset())
     assert list((tmp_path / "open_benchmarks").iterdir()) == []
+
+
+def test_force_terminated_freeze_can_be_retried(tmp_path, monkeypatch):
+    code = """
+import os, sys
+from pathlib import Path
+from src.eval import open_benchmark
+from tests.unit.test_open_benchmark_boundaries import dataset
+base = Path(sys.argv[1])
+open_benchmark.artifacts_path = lambda *parts: base.joinpath(*parts)
+original = open_benchmark.write_json
+def terminate_after_first(path, value):
+    original(path, value)
+    os._exit(71)
+open_benchmark.write_json = terminate_after_first
+open_benchmark.freeze(dataset())
+"""
+    root = Path(__file__).resolve().parents[2]
+    child = subprocess.run([sys.executable, "-c", code, str(tmp_path)], cwd=root, capture_output=True)
+    assert child.returncode == 71
+    pending = list((tmp_path / "open_benchmarks").iterdir())
+    assert len(pending) == 1 and ".pending-" in pending[0].name
+    monkeypatch.setattr(open_benchmark, "artifacts_path", lambda *parts: tmp_path.joinpath(*parts))
+    frozen = open_benchmark.freeze(dataset())
+    assert open_benchmark.verify_dataset(frozen)["partition_policy"] == open_benchmark.PARTITION_POLICY
+
+
+def test_concurrent_complete_freeze_is_verified_and_reused(tmp_path, monkeypatch):
+    monkeypatch.setattr(open_benchmark, "artifacts_path", lambda *parts: tmp_path.joinpath(*parts))
+    def concurrent_publish(staging, destination):
+        shutil.copytree(staging, destination)
+        raise FileExistsError("another writer published first")
+    monkeypatch.setattr(open_benchmark.os, "rename", concurrent_publish)
+    frozen = open_benchmark.freeze(dataset())
+    assert open_benchmark.verify_dataset(frozen)["partition_policy"] == open_benchmark.PARTITION_POLICY
+    assert not any(".pending-" in path.name for path in frozen.parent.iterdir())
 
 
 def test_feedback_source_identity_is_stable_across_equivalent_text(tmp_path, monkeypatch):

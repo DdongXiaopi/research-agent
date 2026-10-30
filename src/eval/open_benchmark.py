@@ -7,7 +7,9 @@ never creates human labels; final exposure is reserved before sealed parsing.
 from __future__ import annotations
 import copy
 import json
+import os
 import shutil
+import tempfile
 from pathlib import Path
 from uuid import uuid4
 
@@ -100,26 +102,33 @@ def freeze(value):
                           "files": file_digests, "splits": metadata,
                           "partition_policy": PARTITION_POLICY})
     root = artifacts_path("open_benchmarks", identity)
-    if root.exists():
+    if root.exists() or root.is_symlink():
         verify_dataset(root)
         return root
-    root.mkdir(parents=True, exist_ok=False)
+    root.parent.mkdir(parents=True, exist_ok=True)
+    staging = Path(tempfile.mkdtemp(prefix="." + identity + ".pending-", dir=root.parent))
     try:
         files = {}
         for split in sorted(SPLITS):
-            location = root / ("development" if split == "dev_optimize" else "evaluator_only") / (split + ".json")
+            location = staging / ("development" if split == "dev_optimize" else "evaluator_only") / (split + ".json")
             write_json(location, partitions[split])
-            files[split] = {"path": location.relative_to(root).as_posix(), "sha256": sha256_file(location)}
+            files[split] = {"path": location.relative_to(staging).as_posix(), "sha256": sha256_file(location)}
         manifest = {"schema": "open-research-freeze-v1", "dataset_sha256": identity,
             "provenance": provenance, "files": files, "splits": metadata, "frozen_at": now_iso(),
             "partition_policy": PARTITION_POLICY}
         manifest["manifest_sha256"] = sha256_obj(manifest)
-        write_json(root / "manifest.json", manifest)
-    except BaseException:
-        # The directory was created exclusively above; remove only this failed
-        # attempt so a later retry does not mistake partial files for a freeze.
-        shutil.rmtree(root)
-        raise
+        write_json(staging / "manifest.json", manifest)
+        try:
+            os.rename(staging, root)
+        except OSError:
+            # Another process may have published this same immutable dataset.
+            # Never treat an incomplete or different destination as success.
+            if not root.is_dir():
+                raise
+            verify_dataset(root)
+    finally:
+        if staging.exists():
+            shutil.rmtree(staging)
     return root
 
 
