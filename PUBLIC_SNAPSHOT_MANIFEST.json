@@ -2,7 +2,7 @@
   "files": {
     ".env.example": "fe55386f5e008f160bc3c42f9bf490cd7c58a15d66be1c871fc0049e8e37e2e6",
     ".gitattributes": "1b66898e42264aaca6e1ad1571c9aa6ba576b4fd058224a0f9e62ae9557251ac",
-    ".github/workflows/offline.yml": "a3f00c9f7edd03c991d91766f18f3744a8653481e88303ca0fd7123115e5d1c7",
+    ".github/workflows/offline.yml": "52a15eacedb3e9eee5251959bd85e8e85d55a75f727bd543414c66549d44f6de",
     ".gitignore": "573eec5b1652eb2bf1c691e7967dfe867bf1abc3f6946f302dc37e3670906e4b",
     "LICENSE": "e851ba2ff605af329fbe7490bd379157a242f33360c7ca5f4f90093581ed5a42",
     "README.md": "24c7bddc0c741636af483e9eae7ba0203c540687b1c3be7960e095780cc7d67c",
@@ -90,7 +90,7 @@
     "docs/PUBLIC-DOCKER-WORKER.md": "d94b55c2b64c2ebaf4729233d5cfdc659ed8c3f9c9f1886a020272d61eba8569",
     "docs/PUBLIC-EVIDENCE-2026-10-19.json": "fb7b21c98b238f06717d7569087b5fc88d3d0b15a105664e0cda9286030e3bb8",
     "docs/PUBLIC-RELEASE-PLAN-2026-10-28.md": "d433500e628aa5d690504c441dcee253b391c4d5c34640e5f5c6e18303b87068",
-    "docs/PUBLIC-RELEASE-SCOPE.md": "12f3a9c701b43966b92f6e46cf1ee257b96662c07393bf9c8806a7ec0b7e594e",
+    "docs/PUBLIC-RELEASE-SCOPE.md": "68a188903d368769497050adb81f23a9e19b2a38aaffedb626c517bd4312ae74",
     "docs/PUBLIC-STATUS.md": "b9e4b5b5211bd85df45c523d1e872a73a875c8ee3d3f3defe81b24d803112b3d",
     "docs/vendor-license-audit-2026-10-10.md": "1669c89b297cf02ab83799f6c1da84243095d53bd560443259543bdbcbbd6f55",
     "patches/gepa/windows-utf8-logger.patch": "113ee0c7293182b32e6fbb1aa18f9fd4f03c72f889b2a7aad23951e02e23d04d",

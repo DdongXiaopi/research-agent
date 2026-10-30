@@ -85,8 +85,10 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install optional native document adapter
-        run: python -m pip install -r requirements.txt -r requirements-paperqa.txt pytest
+        run: |
+          python -m venv .venv
+          .\.venv\Scripts\python.exe -m pip install -r requirements.txt -r requirements-paperqa.txt pytest
       - name: Verify installed dependencies
-        run: python -m pip check
+        run: .\.venv\Scripts\python.exe -m pip check
       - name: Test native records and document evidence handoff
-        run: python -m pytest -q tests/unit/test_public_capabilities.py
+        run: .\.venv\Scripts\python.exe -m pytest -q tests/unit/test_public_capabilities.py
