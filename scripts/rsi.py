@@ -61,7 +61,8 @@ from src.util import artifacts_path, artifacts_root, repo_root, path, read_json,
 
 def _print(title: str, obj: Any) -> None:
     print(f"\n=== {title} ===")
-    print(json.dumps(obj, ensure_ascii=False, indent=2, sort_keys=True))
+    # ASCII escapes preserve JSON values on legacy Windows console code pages.
+    print(json.dumps(obj, ensure_ascii=True, indent=2, sort_keys=True))
 
 
 def cmd_init(args: argparse.Namespace) -> int:

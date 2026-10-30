@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_answer_execute_requires_matching_caller_hash(tmp_path):
-    env = {**os.environ, "RSI_HOME": str(tmp_path / "run-home")}
+    env = {**os.environ, "RSI_HOME": str(tmp_path / "run-home"), "PYTHONIOENCODING": "cp1252"}
 
     def run(*args):
         return subprocess.run([sys.executable, str(ROOT / "scripts" / "research_assistant.py"),
@@ -37,6 +37,15 @@ def test_answer_execute_requires_matching_caller_hash(tmp_path):
     executed = run("--execute", "--expected-plan-sha256", plan_hash)
     assert executed.returncode == 0, executed.stderr
     assert json.loads(executed.stdout)["response"]["status"] == "ok"
+
+
+def test_rsi_json_output_survives_limited_console_encoding():
+    env = {**os.environ, "PYTHONIOENCODING": "cp1252"}
+    code = "from scripts.rsi import _print; _print('status', {'detail': chr(27979)+chr(35797)+chr(0x1f642)})"
+    result = subprocess.run([sys.executable, "-c", code], cwd=ROOT, env=env,
+                            capture_output=True, text=True, encoding="cp1252")
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout.split("=== status ===", 1)[1])["detail"] == "测试🙂"
 
 
 def test_discover_rejects_missing_hash_before_network_dispatch(tmp_path, monkeypatch):

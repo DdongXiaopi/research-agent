@@ -334,7 +334,8 @@ def main(argv=None):
         result = open_benchmark.assess(args.evaluation_id, read_json(args.annotations))
     else:
         result = validate_group_partition(read_json(args.input))
-    print(json.dumps(result, ensure_ascii=False, indent=2))
+    # JSON must remain valid on Windows consoles and pipes using legacy code pages.
+    print(json.dumps(result, ensure_ascii=True, indent=2))
     return 0
 
 
