@@ -11,6 +11,7 @@ from ..eval import open_benchmark as benchmark
 from ..eval.run_manifest import source_tree_fingerprint
 from ..runtime import research_assistant as research
 from ..runtime.research_tools import audit_open_research_trace
+from ..eval.open_research import source_identity_keys
 from ..util import artifacts_path, artifacts_root, repo_root, read_json, sha256_file, sha256_obj
 from . import release, review
 from .policy import static_gate
@@ -35,9 +36,7 @@ def _feedback_sources(candidate):
             raise ValueError("feedback source receipt changed")
         found.add(feedback["feedback_id"])
         for source in request["evidence"]:
-            sources.add("text:" + sha256_obj(source["text"]))
-            if source.get("url"):
-                sources.add("url:" + source["url"].strip().casefold())
+            sources.update(source_identity_keys(source))
     if found != expected:
         raise ValueError("feedback candidate source records are missing")
     return sources
@@ -64,9 +63,7 @@ def _assessment(evaluation_id, split, candidate, cfg, feedback_sources):
         run = Path(case["run_dir"])
         request = research.request_from_dict(read_json(run / "request.json"))
         for source in request.evidence:
-            keys = {"text:" + sha256_obj(source["text"])}
-            if source.get("url"):
-                keys.add("url:" + source["url"].strip().casefold())
+            keys = source_identity_keys(source)
             if keys & feedback_sources:
                 raise ValueError("feedback source leaked into independent candidate evaluation")
         expected = research.build_plan(request, cfg, states[case["arm"]])

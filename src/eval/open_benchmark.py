@@ -7,6 +7,7 @@ never creates human labels; final exposure is reserved before sealed parsing.
 from __future__ import annotations
 import copy
 import json
+import shutil
 from pathlib import Path
 from uuid import uuid4
 
@@ -17,12 +18,13 @@ from ..governance.policy import static_gate
 from ..contracts.types import Candidate, content_sha256
 from ..evolution.apply import state_with
 from ..util import artifacts_path, read_json, write_json, sha256_file, sha256_obj, sha256_text, now_iso
-from .open_research import (assess_annotations, citation_statistics, paired_group_bootstrap,
-                            validate_group_partition)
+from .open_research import (assess_annotations, citation_statistics, normalize_group_id, paired_group_bootstrap,
+                            source_identity_keys, validate_group_partition)
 from .run_manifest import source_tree_fingerprint
 from .annotation_policy import validate_actor, ORIGINS
 
 SPLITS = {"dev_optimize", "selection_gate", "final_holdout"}
+PARTITION_POLICY = "normalized-source-group-v1"
 
 
 def validate_rubric(request, rubric):
@@ -58,7 +60,9 @@ def freeze(value):
             any(not isinstance(item, str) or not item.strip() for item in provenance.values()) or
             provenance["license"].upper() in {"UNKNOWN", "UNVERIFIED"}):
         raise ValueError("open dataset requires explicit source/revision/license/reference provenance")
-    partitions, owners, identities, groups = value["partitions"], {}, {}, {}
+    # Canonical groups are persisted so paired group bootstrap sees the same
+    # identity even when callers use equivalent Unicode or whitespace forms.
+    partitions, owners, identities, groups = copy.deepcopy(value["partitions"]), {}, {}, {}
     for split, cases in partitions.items():
         identities[split] = []
         for case in cases:
@@ -67,19 +71,21 @@ def freeze(value):
                 raise ValueError("open case requires request, group_id and task rubric")
             if "evaluation_role" in case and case["evaluation_role"] not in {"primary", "diagnostic_only"}:
                 raise ValueError("open case evaluation role is invalid")
+            case["group_id"] = normalize_group_id(case["group_id"])
             request = research.request_from_dict(case["request"])
             validate_rubric(request, case["rubric"])
             identities[split].append({"task_id": request.task_id, "group_id": case["group_id"]})
             # Same text or URL cannot be relabeled as a different topic to leak
             # an article across splits. Evidence within one group is allowed.
             for source in request.evidence:
-                keys = ["text:" + sha256_text(source["text"])]
-                if source.get("url"):
-                    keys.append("url:" + source["url"].strip().casefold())
-                for key in keys:
-                    if key in owners and owners[key] != split:
-                        raise ValueError("same article/source crosses open benchmark splits")
-                    owners[key] = split
+                for key in source_identity_keys(source):
+                    if key in owners:
+                        owner_split, owner_group = owners[key]
+                        if owner_split != split:
+                            raise ValueError("same article/source crosses open benchmark splits")
+                        if owner_group != case["group_id"]:
+                            raise ValueError("same article/source assigned to multiple groups")
+                    owners[key] = (split, case["group_id"])
             groups[request.task_id] = case["group_id"]
     validate_group_partition(identities)
     file_digests = {split: sha256_text(json.dumps(partitions[split], ensure_ascii=False, indent=2,
@@ -91,21 +97,29 @@ def freeze(value):
                    "rubric_sha256": sha256_obj(c["rubric"]), "budget": c["request"].get("budget", {})}
                   for c in partitions[split]]} for split in SPLITS}
     identity = sha256_obj({"schema": value["schema"], "provenance": provenance,
-                          "files": file_digests, "splits": metadata})
+                          "files": file_digests, "splits": metadata,
+                          "partition_policy": PARTITION_POLICY})
     root = artifacts_path("open_benchmarks", identity)
     if root.exists():
         verify_dataset(root)
         return root
     root.mkdir(parents=True, exist_ok=False)
-    files = {}
-    for split in sorted(SPLITS):
-        location = root / ("development" if split == "dev_optimize" else "evaluator_only") / (split + ".json")
-        write_json(location, partitions[split])
-        files[split] = {"path": location.relative_to(root).as_posix(), "sha256": sha256_file(location)}
-    manifest = {"schema": "open-research-freeze-v1", "dataset_sha256": identity,
-        "provenance": provenance, "files": files, "splits": metadata, "frozen_at": now_iso()}
-    manifest["manifest_sha256"] = sha256_obj(manifest)
-    write_json(root / "manifest.json", manifest)
+    try:
+        files = {}
+        for split in sorted(SPLITS):
+            location = root / ("development" if split == "dev_optimize" else "evaluator_only") / (split + ".json")
+            write_json(location, partitions[split])
+            files[split] = {"path": location.relative_to(root).as_posix(), "sha256": sha256_file(location)}
+        manifest = {"schema": "open-research-freeze-v1", "dataset_sha256": identity,
+            "provenance": provenance, "files": files, "splits": metadata, "frozen_at": now_iso(),
+            "partition_policy": PARTITION_POLICY}
+        manifest["manifest_sha256"] = sha256_obj(manifest)
+        write_json(root / "manifest.json", manifest)
+    except BaseException:
+        # The directory was created exclusively above; remove only this failed
+        # attempt so a later retry does not mistake partial files for a freeze.
+        shutil.rmtree(root)
+        raise
     return root
 
 
@@ -117,10 +131,14 @@ def verify_dataset(root):
         raise ValueError("open benchmark manifest changed")
     if set(manifest["files"]) != SPLITS or root.name != manifest["dataset_sha256"]:
         raise ValueError("invalid frozen open dataset identity")
-    if manifest["dataset_sha256"] != sha256_obj({"schema": "open-research-dataset-v1",
-            "provenance": manifest["provenance"],
-            "files": {split: entry["sha256"] for split, entry in manifest["files"].items()},
-            "splits": manifest["splits"]}):
+    identity = {"schema": "open-research-dataset-v1", "provenance": manifest["provenance"],
+                "files": {split: entry["sha256"] for split, entry in manifest["files"].items()},
+                "splits": manifest["splits"]}
+    if "partition_policy" in manifest:
+        if manifest["partition_policy"] != PARTITION_POLICY:
+            raise ValueError("unsupported open benchmark partition policy")
+        identity["partition_policy"] = manifest["partition_policy"]
+    if manifest["dataset_sha256"] != sha256_obj(identity):
         raise ValueError("open benchmark content identity changed")
     for split, entry in manifest["files"].items():
         expected = ("development" if split == "dev_optimize" else "evaluator_only") + "/" + split + ".json"
@@ -161,6 +179,8 @@ def build_plan(root, cfg, *, split="dev_optimize", candidate_release=None, candi
     if split not in SPLITS:
         raise ValueError("invalid benchmark split")
     manifest = verify_dataset(root)
+    if manifest.get("partition_policy") != PARTITION_POLICY:
+        raise ValueError("legacy open benchmark needs a fresh freeze under the current partition policy")
     parent = release.load_state()
     states = {"baseline": parent}
     if candidate and candidate_release:

@@ -33,6 +33,7 @@ PUBLIC_TEST_FILES = {
     "tests/unit/test_docker_render_worker.py",
     "tests/unit/test_audit_promotions.py",
     "tests/unit/test_public_smoke_encoding.py",
+    "tests/unit/test_open_benchmark_boundaries.py",
     "tests/unit/test_data_cache_identity.py",
     "tests/unit/test_fresh_evidence_inference_writer.py",
     "tests/unit/test_preparation_atomic.py",

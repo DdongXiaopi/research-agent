@@ -44,6 +44,10 @@ python scripts/rsi.py --config configs/experiment.public-task-input.yaml ablate 
 
 先经 `feedback --use-for-evolution` → `export-dev` → `propose-skill` 得到待评测候选。独立开放数据须先冻结 task rubric、来源组与三层分区。开发/选择回答都使用同一 `--candidate` 运行 `benchmark-run`，再经独立双评和必要裁决完成 `benchmark-assess`。
 
+开放 benchmark 的来源文本和 `group_id` 会在跨分区检查时统一 Unicode 与空白形式；同一分区内等价的 `group_id` 会按同一来源组保存，同一来源不得伪装成多个来源组。反馈材料与独立评测也采用相同的来源身份检查。不同 DOI/URL 写法或不同内容片段不一定能自动识别为同一来源，数据提供者仍须为它们指定同一个规范 `group_id`。冻结写入发生可捕获异常时会清除本次新建的不完整目录；强制终止或断电不提供跨文件原子保证。
+
+新冻结记录将上述分组检查策略纳入数据身份；旧冻结记录仍可核验和审计，但未记录该策略的旧材料需要用原始输入重新冻结后才能生成新的评测计划，旧结果不自动迁移。
+
 ```powershell
 python scripts/research_assistant.py promotion-request --candidate <candidate.json> --config <相同配置> --development-id <open开发ID> --selection-id <open选择ID>
 python scripts/research_assistant.py promotion-review --candidate-id <ID> --expected-request-sha256 <精确请求哈希> --decision approve --reviewer <实际审核者> --reason <具体理由>

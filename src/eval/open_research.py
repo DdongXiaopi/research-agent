@@ -4,9 +4,34 @@ ScholarQABench separates rubric utility and citation attribution. This adapter
 accepts provenance-bound independent annotations rather than synthesizing gold
 by overlap with the model's own answer. No automatic promotion uses this report.
 """
-from ..util import sha256_obj
+from ..util import sha256_obj, sha256_text
 import random
+import unicodedata
 from .annotation_policy import validate_actor, validate_pair, ORIGINS
+
+
+def normalize_group_id(value: str) -> str:
+    """Canonicalize visible spacing/Unicode before comparing source groups."""
+    if not isinstance(value, str):
+        raise ValueError("open tasks require nonempty article/topic groups")
+    normalized = " ".join(unicodedata.normalize("NFKC", value).split())
+    if not normalized:
+        raise ValueError("open tasks require nonempty article/topic groups")
+    return normalized
+
+
+def source_identity_keys(source: dict) -> set[str]:
+    """Conservatively identify equivalent source text and supplied URLs."""
+    text = source.get("text")
+    if not isinstance(text, str) or not text.strip():
+        raise ValueError("source identity requires nonempty text")
+    keys = {"text:" + sha256_text(" ".join(unicodedata.normalize("NFKC", text).split()))}
+    url = source.get("url")
+    if url:
+        if not isinstance(url, str):
+            raise ValueError("source URL must be text")
+        keys.add("url:" + unicodedata.normalize("NFKC", url).strip().casefold())
+    return keys
 
 
 def validate_group_partition(partitions: dict[str, list[dict]]) -> dict:
@@ -18,9 +43,9 @@ def validate_group_partition(partitions: dict[str, list[dict]]) -> dict:
             raise ValueError("open evaluation partitions cannot be empty")
         for task in tasks:
             identity, group = task.get("task_id"), task.get("group_id")
-            if (not isinstance(identity, str) or not identity or identity in task_ids
-                    or not isinstance(group, str) or not group):
+            if (not isinstance(identity, str) or not identity.strip() or identity in task_ids):
                 raise ValueError("open tasks require unique IDs and independent article/topic groups")
+            group = normalize_group_id(group)
             if group in owners and owners[group] != split:
                 raise ValueError("article/topic group crosses an evaluation boundary")
             owners[group] = split
