@@ -26,8 +26,8 @@
 ## 公开快照命令
 
 ```powershell
-py -3.12 scripts/build_public_snapshot.py --output outputs/public-release-20261030-v25
-py -3.12 scripts/build_public_snapshot.py --verify outputs/public-release-20261030-v25
+py -3.12 scripts/build_public_snapshot.py --output outputs/public-release-20261030-v27
+py -3.12 scripts/build_public_snapshot.py --verify outputs/public-release-20261030-v27
 ```
 
 输出目录必须不存在。工具复制文件并写 `PUBLIC_SNAPSHOT_MANIFEST.json`，验证哈希、文件清单、公开文档的相对链接及常见凭据和个人绝对路径。发布时从输出目录建立新的 Git 仓库；不要推送研究仓库的旧 Git 历史，因为旧历史已包含封存题目与个人工作记录。
