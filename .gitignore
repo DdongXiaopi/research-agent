@@ -1,0 +1,34 @@
+__pycache__/
+*.py[cod]
+.venv/
+.conda/
+tools/pi-bridge/node_modules/
+.workbuddy/
+.chart-data-*/
+.codex-finalizer/
+.codex-ppt-build/
+outputs/
+*.log
+
+# 运行产物默认忽略；release 快照和回滚点可单独提交。
+artifacts/*
+!artifacts/releases/
+
+# 本地输入、冻结清单、可见题目和封存题默认不进入公开 Git 历史。
+# 确认数据许可与隐私范围后，使用 git add -f 显式选择要分享的文件。
+/data/
+
+# Docker deployment profiles contain machine-specific receipt paths.
+/configs/experiment.docker-tools*.yaml
+
+# 只读上游快照体积大（6000+ 文件），不入库；revision 由 UPSTREAM_LOCK.yml 的 source_sha256 校验
+vendor/
+vendor/**/*.zip
+
+# 真实请求与个人反馈属于运行产物，均由上面的 artifacts/* 排除。
+# 快照工具自身的备份根目录在外面，不受影响
+
+# 密钥：本地注入用，绝不入库（provider 会在导入时读取并 setdefault）
+.env
+.env.local
+!.env.example

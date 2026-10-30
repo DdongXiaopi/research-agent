@@ -1,0 +1,20 @@
+{
+  "model_id": "deepseek-flash",
+  "base_url": "https://api.deepseek.com",
+  "api_key_env": "DEEPSEEK_API_KEY",
+  "prompt_version": "healthfc-g05-generic-v2-directional",
+  "seed": "healthfc-g05-deepseek-flash-20261018-v3-directional",
+  "max_http_attempts": 3,
+  "cooldown_seconds": 1.2,
+  "max_tokens": 500,
+  "timeout_seconds": 180,
+  "temperature": 0,
+  "enable_thinking": false,
+  "sample_per_class": 26,
+  "max_cost_usd": 0.5,
+  "context_tokens": 40960,
+  "extra_body": {
+    "response_format": {"type": "json_object"},
+    "stream": false
+  }
+}

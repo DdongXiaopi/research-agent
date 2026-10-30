@@ -1,0 +1,193 @@
+# RSI 主线配置（M2：数据隔离与可信度）—— 零成本、可离线重放
+# 所有字段都会被解析后写入 run manifest，不允许残留 ${...} 占位符
+spec_version: "1.2"
+domain_profile: biomedical
+
+models:
+  task:
+    provider: fake              # deterministic fake provider，不联网、不花钱
+    model_id: fake-deterministic-v1
+    temperature: 0
+    # 【N4】证据呈现阈值：属协议，改了会变指纹（详见 docs/protocolqa-analysis-2026-09-27.md）
+    max_context_chars: 30000    # protocolqa 证据 max 14188 字符，旧默认 6000 会切掉 38% 的题
+    max_doc_chars: 1500         # 单条 passage 上限，本次不动（保持单一变量）
+  reflection:
+    provider: fake
+    model_id: fake-reflection-v1
+  judge:
+    provider: fake
+    model_id: exact-match-v1    # LitQA2/ProtocolQA 为 MCQ，主评分用精确匹配
+
+runtime:
+  provider: fake
+  disable_pi_builtin_tools: [bash, powershell, edit, write]
+  max_model_calls: 12
+  max_tool_calls: 20
+  # 题级受控噪声：只用于让"多 seed + 配对 bootstrap"这条统计链路可离线验证。
+  # 接真实 provider 后必须为 0（方差由真实采样产生）。
+  fake_noise: 0.0
+
+tools:
+  active: [workspace.read, artifact.write, academic.search, fulltext.resolve, citation.verify]
+  raw_shell: deny
+  raw_network: deny
+
+retrieval:
+  backend: offline-fixture      # 离线检索夹具；真实 paper-qa/Crossref 接入见 M2
+  top_k: 3
+  # 【协议升级 2026-09-26】默认语料改为 real-v3（真实论文段落）。
+  # v2 合成语料含模板假话与答案直给句，测的是"识破模板"而非"读懂证据"
+  # （详见 src/retrieval/gateway.py 模块 docstring）。
+  # ⚠️ 后果：离线模拟器（fake）在 v3 上只有随机水平 —— 它的打分是词面重叠，
+  #    而真实论文段落不字面复述选项。**本配置下的数字只能作管线 smoke test**，
+  #    任何结论必须走 configs/experiment.http.yaml（真实模型）。
+  #    需要复现升级前结论时用 configs/experiment.legacy-v2.yaml。
+  corpus_version: real-v3
+  # 【P6 2026-09-27 跟进】封存基线已随包 A 重封为 index_scoped（见
+  #   configs/experiment.http.pubmedqa-final.yaml + baseline-v1-cited），
+  #   故本项目所有配置必须统一到 index_scoped，否则协议守卫会因 doc_id_scheme
+  #   不一致拦下任何进化轮次（tests/unit/test_protocol_guard.py 即该护栏的守门测试）。
+  doc_id_scheme: index_scoped
+
+skills:
+  release_id: baseline-v1
+  registry: skills/registry.m1-v1.yaml
+  mutable_groups: [G-main, G-adj, G-common, G-crystallized]
+  frozen_groups: [G-verify]
+  crystallized_group: G-crystallized   # M3：结晶出的新 Skill 归入独立组，便于审计与冻结
+  # description 只往领域/任务型 skill 上进化；通用格式化 skill 塞关键词只会污染触发条件
+  description_evolution_groups: [G-main, G-adj]
+  # 召回阈值：min_score=1 时召回率 ~92%~100%，Skill "永远命中" → description 进化
+  # 无可观测效果（A2 消融恒为 0）。提到 2 后召回率落到有区分度的区间，双维进化才可测。
+  recall_min_score: 2
+
+evaluation:
+  # 【A3】suppqa = 全新封存的 final_holdout（82 题，gold 取自数据集 ideal 字段的人工答案）。
+  # litqa2 / protocolqa / scholarqa_cs 的 final 已被 6 轮候选终评消费（43 条审计记录），
+  # 降级为 dev2：可用于分析，不得再作为最终结论。
+  manifests: [litqa2.json, protocolqa.json, scholarqa_cs.json, suppqa.json,
+              pubmedqa.json]
+  datasets: [litqa2, protocolqa]
+  # M4 迁移域：**只终评**，不进上面的 datasets，因此永不参与进化
+  # （Spec §6.2：ScholarQABench CS 冻结，只终评）
+  # 【A2】CS 的标签由"与问题实词重叠最高"自动生成，与 provider 打分同构 →
+  # 它的 0 收益既不能证伪也不能证实泛化，结论层面降级为机制 smoke test。
+  transfer_datasets: [scholarqa_cs]
+  # 【D1 2026-09-27】结论出口已从 suppqa 换到 pubmedqa（ADR-0004）：
+  #   suppqa **退役**（揭盲额度 0/0）且基线贴地（acc 0.024/弃权 89%，+13.4pp 系
+  #   低杆效应，caveat #1 明令不得作为结论）⇒ 指向它等于指向一个废出口。
+  #   本配置只作离线 smoke（fake provider），真实终评走
+  #   configs/experiment.http.pubmedqa-final.yaml。
+  primary_final_datasets: [pubmedqa]
+  final_holdout_access: evaluator_only
+  seed: 20260924
+  seeds: [20260924, 20260925, 20260926]   # M2：≥3 个 seed 重复运行
+  require_split_freeze: true              # M2：split 必须先冻结且校验通过
+  # 【协议升级 2026-09-26】默认注入官方 "Insufficient information" 选项（R2）。
+  # 官方 LAB-Bench 口径本就带它；没有它，"没证据就别猜"没有出口
+  # （真实模型 506 次调用里只有 4 次文本弃权）。注入后同时报
+  # accuracy / coverage / answered_precision 三个指标 —— 只看 accuracy 会误判。
+  insufficient_option: true
+  max_tasks_per_round: 40
+  main_metric: accuracy
+  bootstrap:
+    B: 10000
+    rng_seed: 20260924
+
+evolution:
+  # M3 双维扩展：正文（skill.misapplied）与结晶新 Skill（skill.missing）一并开放
+  allowed_artifacts: [system_prompt, skill_description, skill_body, new_skill]
+  max_candidates_per_round: 5
+  max_rounds: 8
+  reflection_backend: deterministic-stub # 明确非 GEPA；见 src/evolution/gepa_adapter.py
+  # 【M3.1】行为通道：给每个行为指定唯一归属通道，让三维的作用通路互相可分。
+  # 关闭（enabled: false）即回到 M3 的"并集"口径，仅用于对照实验 —— 并集下
+  # prompt/body/新 Skill 会落进同一批开关，消融检不出交互（详见 runtime/channels.py）。
+  behavior_channels:
+    enabled: true
+    owner:
+      prompt: [rerank, citation]         # 检索与输出：读哪些（对所有题生效）
+      skill_body: [evidence, abstain]    # 判据与程序：怎么判、没证据怎么办（召回后才生效）
+      description: [recall]              # 召回：命中哪个 Skill
+    enforce_in_evolution: true          # 候选生成阶段：越界或"无新行为"的候选直接不提
+  gepa:
+    enabled: false
+    budget: light
+  crystallization:
+    # 结晶门（新增工件，比改现有工件更严）
+    min_procedure_steps: 3
+    min_trigger_recall: 0.30        # 结晶出来却召回不了目标题 = 白结晶
+    max_description_similarity: 0.60 # 与已有 Skill 太像就不该结晶
+    # 【M4+】跨域触发审计上限：新 Skill 在"其它领域的 dev_optimize 题"上的触发率。
+    #
+    # ⚠️ 阈值标定依据（别当成"能拦住跨域失败"的判据）：
+    #   实测各 trigger 组合在可见负样本上的触发率为 0.026~0.148，取 ~1.35 倍 = 0.20 作为上界。
+    #   造成 CS 6 回归中 5 个的那个 Skill，在 litqa2 上只有 0.094~0.137 —— **低于此阈值**，
+    #   在 CS 上却接近 0.8。litqa2/protocolqa 同属生物医学，代表不了 CS，
+    #   因此可见数据构造不出能复现该失败的负样本（详见 crystallize.py 模块 docstring）。
+    #   负样本缺失时门禁 fail-closed 直接判 fail。
+    max_cross_domain_trigger: 0.20
+    # fallback 池（同域非目标题）的上限。
+    # 实测：该池的**基线**触发率就有 0.36（同域词汇本就相近），沿用 0.20 会把
+    # 整条结晶链路打死 —— campaign 三轮 `skill.missing` 全部因此 skipped。
+    # 所以这个池**只审计不拦截**（1.0 = 不设实质上限），判定仍写进 checks 供 review。
+    max_non_target_trigger: 1.0
+    cross_domain_negative_limit: 0     # 0 = 不限，用全部可用负样本（避免截断导致阈值失真）
+
+gates:
+  static:
+    max_prompt_chars: 8000
+    max_description_chars: 400      # M2：description 会整体进上下文，必须短且单行
+    # M3：正文按正文长度判体积，不再套用 prompt 的 8000
+    max_body_chars: 6000
+    min_procedure_steps: 3
+    max_procedure_steps: 12
+    forbidden_patterns:
+      - "ignore previous"
+      - "ignore all previous"
+      - "disregard the system"
+      - "rm -rf"
+      - "curl "
+      - "wget "
+      - "bash -c"
+      - "powershell"
+      - "send your api key"
+      - "exfiltrate"
+      - "disable the guardrail"
+      - "override the policy"
+    require_single_artifact: true
+  accept:
+    require_static_gate: true
+    main_metric_non_regression: true     # dev_optimize 主指标不降
+    require_human_review: true
+    # M2+ 增强版（Spec §6.3 第 4 条）：Δ ≥ 1.0pp 或 P(Δ>0) ≥ 0.90
+    gate_min_delta_pp: 1.0
+    gate_min_prob_delta_gt_0: 0.90
+    # 次指标容差（§6.3 第 5 条）
+    tolerance:
+      cost_pct: 15
+      p95_latency_pct: 20
+      citation_precision_pp: 1.0
+      # 【B / P3】无支撑主张率（接地性/幻觉近似）：候选只允许比基线高 ≤5pp，
+      # 超过即判失败（hermes 式"各子项不回退"门禁）。
+      unsupported_answer_rate_pp: 5.0
+
+review:
+  release: required
+  final_holdout_unlock: required
+
+# M3 受控执行网关：默认关闭。轻量表达式用 AST 白名单解释器，不碰 shell；
+# 任意代码 / LaTeX 编译走 WSL2 隔离路径，离线不可用则显式报错（不静默降级）。
+execution:
+  enabled: false
+  max_expr_chars: 400
+  max_nodes: 200
+  max_output_chars: 2000
+  allow_latex: true
+  wsl2:
+    enabled: false
+    note: "高风险执行（任意 Python / TeX 编译）专用；未启用时相关调用显式失败"
+
+privacy:
+  mode: public_only
+  redact_before_persist: true

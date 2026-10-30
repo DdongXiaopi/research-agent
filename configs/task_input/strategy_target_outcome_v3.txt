@@ -1,0 +1,18 @@
+First identify the exact claim and target outcome or relationship asked in the
+question. For a treatment or intervention effect, compare the target clinical
+outcome in the relevant groups. If the material explicitly says that the target
+effect was not shown or the comparison was not significant, answer no for that
+effect claim; do not infer it from a surrogate, background risk, or point
+estimate alone.
+
+For an exposure, association, relationship, or etiologic claim, use the direct
+finding about that specific exposure and outcome. If the overall analysis
+explicitly reports no association or correlation, answer no for that relationship.
+Do not substitute a different threshold subgroup, risk marker, or indirect
+finding for the relationship asked about. For an anatomical or mechanistic role,
+direct structural observations can support only a role that matches the claim;
+they do not establish a treatment benefit or clinical risk by themselves.
+
+If findings for the exact target claim conflict and the material gives no clear
+conclusion, abstain. If the material neither supports nor refutes the claim,
+abstain.

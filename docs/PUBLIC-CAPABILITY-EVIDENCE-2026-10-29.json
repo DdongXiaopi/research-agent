@@ -1,0 +1,66 @@
+{
+  "schema": "rsi-public-capability-evidence-v1",
+  "date": "2026-10-29",
+  "scope": "synthetic engineering integration acceptance only",
+  "pi_fixed_task": {
+    "provider": "pi",
+    "model_id": "Qwen/Qwen2.5-7B-Instruct",
+    "protocol_epoch": "public-task-input-v1",
+    "splits": ["dev_optimize", "selection_gate"],
+    "seeds": [11, 12, 13],
+    "baseline_accuracy_each_pair": 0.0,
+    "candidate_accuracy_each_pair": 1.0,
+    "logical_operations": 12,
+    "physical_http_attempts": 12,
+    "http_200": 12,
+    "physical_incomplete": 0,
+    "engineering_release_published": "rel-cand-56008023e363",
+    "rolled_back_to": "public-fixed-base",
+    "final_holdout_read": false,
+    "local_summary_sha256": "9529a860e9e31be7c63bac2e0624ea5d220ed0868bb66433d70f67895f706ecd",
+    "local_report_sha256": "b492352dc834ebff2d761bb3a1b5a5dca2df5bb6425b9aede5b26d8b70f9f3cc"
+  },
+  "http_open_authored": {
+    "provider": "http",
+    "model_id": "Qwen/Qwen2.5-7B-Instruct",
+    "candidate_origin": "authored_engineering_fixture",
+    "development_rubric": {"baseline": 0.0, "candidate": 1.0},
+    "selection_rubric": {"baseline": 0.0, "candidate": 1.0},
+    "development_citation": {"baseline": 1.0, "candidate": 1.0},
+    "selection_citation": {"baseline": 1.0, "candidate": 1.0},
+    "physical_http_attempts": 12,
+    "unknown_requests": 0,
+    "engineering_release_published": "rel-cand-fe13079a1c3e",
+    "rolled_back_to": "public-open-base",
+    "tamper_guards_verified": true,
+    "local_summary_sha256": "3116d2e144bb44fa813995eb63e3e74230f715446f4ba7c46cbd6765f822f1c9",
+    "local_request_sha256": "a1fa4d5007094a6716fe3d09313bebc555c73f6d83f217d526b1019b8d8d803b"
+  },
+  "http_open_generated": {
+    "provider": "http",
+    "model_id": "Qwen/Qwen2.5-7B-Instruct",
+    "candidate_origin": "live_model_proposal",
+    "development_rubric": {"baseline": 0.0, "candidate": 0.0},
+    "selection_rubric": {"baseline": 0.0, "candidate": 0.0},
+    "verdict": "proposed_reject",
+    "reason": "the generated Skill omitted the feedback code mapping; independent improvement gate failed",
+    "local_request_sha256": "b6bbe348265af6f53cd1f655fdacad983f0e942e5e65150ca30c4c6f9e08d3e7"
+  },
+  "oa_document": {
+    "publisher": "PLOS Biology",
+    "doi": "10.1371/journal.pbio.1001745",
+    "license": "CC BY",
+    "download_requests": 2,
+    "provider_requests": 0,
+    "characters": 28672,
+    "download_sha256": "c6320f13fc4aecf1a59c2ec3a04a8205324a15a6eac24c4218ded1a1cb67479d",
+    "paperqa_native_records_version": "2026.8.12",
+    "citation_identity_verified": true,
+    "local_summary_sha256": "9511df72ca8f06705fa8dc135715bf41b34b3d2839f9e064569977d6aa621d15"
+  },
+  "limitations": [
+    "The source runs, raw provider responses, and request receipts are retained locally and are not distributed in the public snapshot.",
+    "Synthetic codebooks and program scoring establish integration behavior, not scientific benefit or production readiness.",
+    "The live-model-generated Skill did not satisfy the unchanged effect gate and was not published."
+  ]
+}

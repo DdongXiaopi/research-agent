@@ -1,0 +1,187 @@
+# 【路线 A：真实模型反思】本文件是 experiment.http.yaml 的变体，只改两处：
+#   1. models.reflection: fake → http（候选文本由模型产出，不再来自固定模板库）
+#   2. evolution.reflection_backend: deterministic-stub → llm
+#
+# 为什么必须单开一个配置文件：配置会进协议指纹（sha256(cfg)），而这一版的产物
+# **不与封存 final_holdout 基线配对** —— 它只回答"模型反思能不能造出模板造不出
+# 的补丁"。因此 `evaluation.sealed_pairing: false` 是显式声明，会写进 round 报告。
+# 这里产出的 release 必须在**主配置**（experiment.http.yaml）下用 gate-verdict
+# 重测，才能与 champion 比较。
+#
+# 密钥不写在这里，从环境变量 SILICONFLOW_API_KEY 读（见 src/runtime/provider.py）。
+spec_version: "1.2"
+domain_profile: biomedical
+
+models:
+  task:
+    provider: http
+    model_id: Qwen/Qwen3-8B
+    base_url: https://api.siliconflow.cn/v1
+    api_key_env: SILICONFLOW_API_KEY
+    temperature: 0
+    max_tokens: 512
+    # 实测：只有**顶层** enable_thinking 生效；chat_template_kwargs 会被静默忽略，
+    # thinking_budget=0 直接 400。开着思考会让 completion token ×70、单题 12s。
+    enable_thinking: false
+    timeout: 120
+    # 免费档持续 429 时 3 次重试不够（实测整轮崩）；provider 侧已支持
+    # Retry-After + 指数退避封顶 30s，这里给足 6 次让退避真正生效。
+    max_retries: 6
+    # 【N4】证据呈现阈值：属协议，改了会变指纹（详见 docs/protocolqa-analysis-2026-09-27.md）
+    max_context_chars: 30000    # protocolqa 证据 max 14188 字符，旧默认 6000 会切掉 38% 的题
+    max_doc_chars: 1500         # 单条 passage 上限，本次不动（保持单一变量）
+  reflection:
+    # 【路线 A】真实模型反思。temperature 0.7：反思要的是多样性 ——
+    # temperature=0 时同一批失败样本每次得到同一句，等于又是一个模板。
+    provider: http
+    model_id: Qwen/Qwen3-8B
+    base_url: https://api.siliconflow.cn/v1
+    api_key_env: SILICONFLOW_API_KEY
+    temperature: 0.7
+    max_tokens: 200
+    enable_thinking: false
+    timeout: 120
+    max_retries: 6
+  judge:
+    provider: fake
+    model_id: exact-match-v1
+
+runtime:
+  provider: http
+  disable_pi_builtin_tools: [bash, powershell, edit, write]
+  max_model_calls: 12
+  max_tool_calls: 20
+  fake_noise: 0.0
+
+tools:
+  active: [workspace.read, artifact.write, academic.search, fulltext.resolve, citation.verify]
+  raw_shell: deny
+  raw_network: allow          # 真实 provider 必须联网；仅限本配置文件使用
+
+retrieval:
+  backend: offline-fixture
+  top_k: 3
+  # 【协议升级 2026-09-26】与主线一致：真实语料（v3）。
+  # 真实模型下这是**唯一能出结论**的语料配置（v2 测的是识破模板假话）。
+  corpus_version: real-v3
+  # passage 标识符方案（默认 task_scoped，即 `cand::<task_id>::<i>`）。
+  # 该字段**属于协议**：切到 index_scoped 后必须重跑封存基线，
+  # 否则终评/进化会因协议不一致直接 raise。已封好的 P6 变体见
+  # configs/experiment.http.p6.yaml（含使用顺序说明）。
+
+skills:
+  release_id: baseline-v0
+  registry: skills/registry.yaml
+  mutable_groups: [G-main, G-adj, G-common, G-crystallized]
+  frozen_groups: [G-verify]
+  crystallized_group: G-crystallized
+  description_evolution_groups: [G-main, G-adj]
+  recall_min_score: 2
+
+evaluation:
+  manifests: [litqa2.json, protocolqa.json, scholarqa_cs.json, suppqa.json]
+  datasets: [litqa2, protocolqa]
+  transfer_datasets: [scholarqa_cs]
+  # ⚠️ 真实跑测只覆盖 dev_optimize / selection_gate。suppqa 已决定不揭盲，
+  #    任何 --split final_holdout 的调用都不应走本配置。
+  primary_final_datasets: [suppqa]
+  final_holdout_access: evaluator_only
+  # 【路线 A】本配置改了反思后端 → 协议指纹变化 → 产物**不**与封存基线配对。
+  # 这是显式声明（round.py 会写进报告），不是静默跳过。
+  sealed_pairing: false
+  seed: 20260924
+  seeds: [20260924, 20260925, 20260926]
+  require_split_freeze: true
+  # 【协议升级 2026-09-26】与主线一致：注入官方 "Insufficient information" 选项。
+  # 三指标同看：accuracy / coverage / answered_precision。
+  insufficient_option: true
+  max_tasks_per_round: 40
+  # 【D2 判据轴同源 2026-09-27】选拔轴与判定轴必须是同一个。
+  #   此前 main_metric=accuracy 只用于选拔（round.py），而判定层（verdict.py）的
+  #   primary_axis 是硬编码默认 answered_precision、无任何配置入口 ⇒ 两条轨各自
+  #   生效、无人裁定；同一份数据能得出两套相反的启用结论（P8 就卡在这里）。
+  #   现在两者同源并显式写出，且已纳入 check_protocol（历史基线按当时生效值补全）。
+  main_metric: answered_precision
+  primary_axis: answered_precision
+  primary_axis_tolerance_pp: 0.0
+  bootstrap:
+    B: 10000
+    rng_seed: 20260924
+
+evolution:
+  allowed_artifacts: [system_prompt, skill_description, skill_body, new_skill]
+  max_candidates_per_round: 5
+  max_rounds: 8
+  # 【路线 A】用真实模型反思产出候选文本（维度仍固定枚举，见 reflection.CLASS_DIMENSIONS）
+  reflection_backend: llm
+  reflection_max_attempts: 2
+  behavior_channels:
+    enabled: true
+    owner:
+      prompt: [rerank, citation]
+      skill_body: [evidence, abstain]
+      description: [recall]
+    enforce_in_evolution: true
+  gepa:
+    enabled: false
+    budget: light
+  crystallization:
+    min_procedure_steps: 3
+    min_trigger_recall: 0.30
+    max_description_similarity: 0.60
+    max_cross_domain_trigger: 0.20
+    max_non_target_trigger: 1.0
+    cross_domain_negative_limit: 0
+
+gates:
+  static:
+    max_prompt_chars: 8000
+    max_description_chars: 400
+    max_body_chars: 6000
+    min_procedure_steps: 3
+    max_procedure_steps: 12
+    forbidden_patterns:
+      - "ignore previous"
+      - "ignore all previous"
+      - "disregard the system"
+      - "rm -rf"
+      - "curl "
+      - "wget "
+      - "bash -c"
+      - "powershell"
+      - "send your api key"
+      - "exfiltrate"
+      - "disable the guardrail"
+      - "override the policy"
+    require_single_artifact: true
+  accept:
+    require_static_gate: true
+    main_metric_non_regression: true
+    require_human_review: true
+    gate_min_delta_pp: 1.0
+    gate_min_prob_delta_gt_0: 0.90
+    tolerance:
+      cost_pct: 15
+      p95_latency_pct: 20
+      citation_precision_pp: 1.0
+      # 【B / P3】无支撑主张率（接地性/幻觉近似）：候选只允许比基线高 ≤5pp，
+      # 超过即判失败（hermes 式"各子项不回退"门禁）。
+      unsupported_answer_rate_pp: 5.0
+
+review:
+  release: required
+  final_holdout_unlock: required
+
+execution:
+  enabled: false
+  max_expr_chars: 400
+  max_nodes: 200
+  max_output_chars: 2000
+  allow_latex: true
+  wsl2:
+    enabled: false
+    note: "高风险执行（任意 Python / TeX 编译）专用；未启用时相关调用显式失败"
+
+privacy:
+  mode: public_only
+  redact_before_persist: true

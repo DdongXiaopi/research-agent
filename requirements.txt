@@ -1,0 +1,4 @@
+# Minimal runtime dependencies for the no-data offline smoke command.
+# Optional optimizer/development dependencies remain in requirements-mipro.txt.
+PyYAML==6.0.3
+requests==2.34.2

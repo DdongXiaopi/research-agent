@@ -1,0 +1,155 @@
+# Fresh article-disjoint Evidence Inference evaluation protocol (2026-10-18).
+# The original task-input prompt/registry is the baseline; candidates are
+# produced only from dev_optimize and paired on gate/final.
+spec_version: "1.2"
+domain_profile: biomedical
+
+models:
+  task:
+    provider: http
+    model_id: deepseek-flash
+    base_url: https://api.deepseek.com
+    api_key_env: DEEPSEEK_API_KEY
+    temperature: 0
+    max_tokens: 512
+    enable_thinking: false
+    send_run_seed: true
+    timeout: 120
+    max_retries: 6
+    max_context_chars: 30000
+    max_doc_chars: 30000
+  reflection:
+    provider: http
+    model_id: deepseek-flash
+    base_url: https://api.deepseek.com
+    api_key_env: DEEPSEEK_API_KEY
+    temperature: 0.7
+    max_tokens: 1200
+    enable_thinking: false
+    timeout: 120
+    max_retries: 6
+  judge:
+    provider: fake
+    model_id: exact-match-v1
+
+runtime:
+  provider: http
+  input_mode: task_input
+  task_input_max_chars: 30000
+  disable_pi_builtin_tools: [bash, powershell, edit, write]
+  max_model_calls: 12
+  max_tool_calls: 20
+  fake_noise: 0.0
+  http_no_cache_required: true
+  open_research_structured_parse_failures: true
+
+tools:
+  active: [workspace.read, artifact.write, citation.verify]
+  raw_shell: deny
+  raw_network: allow
+
+retrieval:
+  backend: none
+  top_k: 1
+  corpus_version: task-input-fixed-evidence-v1
+  doc_id_scheme: task_input
+
+skills:
+  release_id: task-input-baseline-v2
+  registry: configs/task_input/registry.v2.yaml
+  mutable_groups: [G-main, G-adj, G-common, G-crystallized]
+  frozen_groups: [G-verify]
+  crystallized_group: G-crystallized
+  description_evolution_groups: [G-main, G-adj]
+  recall_min_score: 2
+
+evaluation:
+  manifests: [evidence_inference_fresh_20261018.json, scholarqa_cs.json]
+  datasets: [evidence_inference_fresh_20261018]
+  transfer_datasets: [scholarqa_cs]
+  primary_final_datasets: [evidence_inference_fresh_20261018]
+  final_holdout_access: evaluator_only
+  sealed_pairing: true
+  seed: 20261018
+  seeds: [20261018, 20261019, 20261020]
+  require_split_freeze: true
+  persist_selection_per_task: true
+  annotation_conservative_repairs: true
+  insufficient_option: false
+  max_tasks_per_round: 60
+  main_metric: accuracy
+  primary_axis: accuracy
+  primary_axis_tolerance_pp: 0.0
+  bootstrap:
+    B: 10000
+    rng_seed: 20261018
+
+evolution:
+  allowed_artifacts: [system_prompt, skill_description, skill_body, new_skill, task_demos]
+  max_candidates_per_round: 5
+  max_rounds: 3
+  reflection_backend: llm
+  proposer: rewrite
+  fewshot_enabled: true
+  fewshot_k: 3
+  reflection_max_attempts: 2
+  behavior_channels:
+    enabled: true
+    owner:
+      prompt: [rerank, citation]
+      skill_body: [evidence, abstain]
+      description: [recall]
+    enforce_in_evolution: true
+  gepa:
+    enabled: true
+    budget: light
+    max_metric_calls: 120
+    max_candidate_proposals: 8
+    reflection_minibatch_size: 5
+  crystallization:
+    min_procedure_steps: 3
+    min_trigger_recall: 0.30
+    max_description_similarity: 0.60
+    max_cross_domain_trigger: 0.20
+    max_non_target_trigger: 1.0
+    cross_domain_negative_limit: 0
+
+gates:
+  static:
+    max_prompt_chars: 8000
+    max_description_chars: 400
+    max_body_chars: 6000
+    min_procedure_steps: 3
+    max_procedure_steps: 12
+    forbidden_patterns: ["ignore previous", "ignore all previous", "disregard the system", "rm -rf", "curl ", "wget ", "bash -c", "powershell", "send your api key", "exfiltrate", "disable the guardrail", "override the policy"]
+    require_single_artifact: true
+  accept:
+    require_static_gate: true
+    main_metric_non_regression: true
+    require_human_review: false
+    gate_min_delta_pp: 1.0
+    gate_min_prob_delta_gt_0: 0.90
+    tolerance:
+      cost_pct: 15
+      p95_latency_pct: 20
+      citation_precision_pp: 1.0
+      unsupported_answer_rate_pp: 5.0
+
+review:
+  release: required
+  final_holdout_unlock: required
+
+execution:
+  enabled: false
+  max_expr_chars: 400
+  max_nodes: 200
+  max_output_chars: 2000
+  allow_latex: false
+  wsl2:
+    enabled: false
+
+privacy:
+  mode: local_only
+  redact_before_persist: true
+
+

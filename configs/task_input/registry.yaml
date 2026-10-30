@@ -1,0 +1,56 @@
+release_id: task-input-baseline-v1
+skills:
+  - name: litqa-literature-synthesis
+    group: G-main
+    license: SELF-AUTHORED
+    description: >
+      Answer biomedical multiple-choice questions by comparing the options with
+      the scientific material supplied with the task.
+    triggers: [gene, protein, cell, assay, inhibitor, antibiotic, resistance,
+               mutation, expression, pathway, organism, clinical, patient,
+               study, reported, evidence]
+    path: configs/task_input/skills/litqa-literature-synthesis.md
+  - name: protocol-troubleshooting
+    group: G-main
+    license: SELF-AUTHORED
+    description: >
+      Diagnose an unexpected wet-lab protocol result from supplied protocol
+      details, reagents, concentrations, times, and temperatures.
+    triggers: [protocol, step, reagent, buffer, concentration, centrifuge,
+               temperature, pellet, isolation, wash, storage]
+    path: skills/main/protocol-troubleshooting.md
+  - name: evidence-citation-check
+    group: G-verify
+    frozen: true
+    license: SELF-AUTHORED
+    description: >
+      Verify citations when the task explicitly asks whether a claim is
+      supported by a supplied source identifier.
+    triggers: [citation, cite, source, reference, verify, support, claim]
+    path: configs/task_input/skills/evidence-citation-check.md
+  - name: statistical-interpretation
+    group: G-adj
+    license: SELF-AUTHORED
+    description: >
+      Interpret statistics present in the supplied material, including
+      confidence intervals, effects, sample size, and controls.
+    triggers: [p-value, significance, confidence, interval, effect, sample,
+               replicate, control, statistics, cohort]
+    path: skills/main/statistical-interpretation.md
+  - name: terminology-normalization
+    group: G-common
+    license: SELF-AUTHORED
+    description: >
+      Match entity names and aliases within the task-provided material before
+      judging the options.
+    triggers: [synonym, alias, symbol, nomenclature, naming, term,
+               terminology, abbreviation]
+    path: configs/task_input/skills/terminology-normalization.md
+  - name: answer-formatting
+    group: G-common
+    license: SELF-AUTHORED
+    description: >
+      Format an already-decided multiple-choice answer and its supplied source
+      identifier without changing the answer.
+    triggers: [format, final, answer, option, choice, multiple-choice, output]
+    path: configs/task_input/skills/answer-formatting.md

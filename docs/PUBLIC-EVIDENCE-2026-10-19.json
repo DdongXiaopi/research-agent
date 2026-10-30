@@ -1,0 +1,62 @@
+{
+  "schema": "rsi-public-evidence-summary-v1",
+  "scope": "Aggregate historical evidence only. Task rows, model responses, and private receipts are not redistributed.",
+  "private_artifact_sha256": {
+    "preregistration.json": "3e88858af946286b18135a033bfd91439ae77a76db39986d2d69ecd2623b5006",
+    "final-evidence-summary.json": "a721ff9041cb798422e0d36e03022194fd55cc699aa7ac69fca7175e32da03a5",
+    "cohort-audit.json": "2fb350e3a3ab7aefc57662b5c7dd8127f0fd1219052f507c552f8f4daf375423",
+    "sources/provenance.json": "859f51094c105f821671ac78707e8d6fd0ccc02242874703494f89d187326e1b"
+  },
+  "source_archives": [
+    {
+      "name": "BioASQ 14b public mirror, yes/no data",
+      "revision": "451e95d26c5baadcb825dde145afb1f88c2d21b8",
+      "url": "https://huggingface.co/datasets/JJBauer/bioasq-14b/resolve/451e95d26c5baadcb825dde145afb1f88c2d21b8/data/yesno-00000-of-00001.parquet",
+      "sha256": "7571bcef83979df08fdf529d3229ec39077be2ec99569276ebe1f26b00f4212c"
+    },
+    {
+      "name": "QASPER official test and evaluator v0.3",
+      "url": "https://qasper-dataset.s3.us-west-2.amazonaws.com/qasper-test-and-evaluator-v0.3.tgz",
+      "sha256": "72a52a41193e2838b8074f80ac074b94f956b84886c36a61c58a7df4171bdd72"
+    }
+  ],
+  "protocol": {
+    "model": "deepseek-flash",
+    "parent": "task-input-baseline-v2",
+    "candidate": "rel-cand-a8511b1481f4",
+    "seeds": [20261019, 20261020, 20261021],
+    "primary_seed": 20261019,
+    "automatic_retries": 0
+  },
+  "results": {
+    "g08_qasper": {
+      "dataset": "qasper_binary_transfer_20261019",
+      "tasks": 72,
+      "article_groups": 72,
+      "baseline_correct": 62,
+      "candidate_correct": 61,
+      "paired_delta_pp": -1.3889,
+      "cluster_bootstrap_ci95_pp": [-4.1667, 0.0],
+      "mcnemar_p": 1.0,
+      "http_200_requests_all_seeds": 432,
+      "assessment_sha256": "70e14510021b0c5764ea4101078e9a420c2fdfe241238caa87a7536e8d58ebe6"
+    },
+    "m4_bioasq": {
+      "dataset": "bioasq13_independent_confirmation_20261019",
+      "tasks": 75,
+      "article_groups": 73,
+      "baseline_correct": 70,
+      "candidate_correct": 70,
+      "paired_delta_pp": 0.0,
+      "cluster_bootstrap_ci95_pp": [0.0, 0.0],
+      "mcnemar_p": 1.0,
+      "http_200_requests_all_seeds": 450,
+      "assessment_sha256": "100ceb34631b999501d60a4a0c64bd5522ab12a68538a4c44bf8e8f6d46b1342"
+    }
+  },
+  "limits": [
+    "Source hashes authenticate supplied files only; the public snapshot does not contain those files.",
+    "Historical results cannot be independently recomputed from this aggregate summary.",
+    "Neither cohort establishes a positive improvement or general research utility."
+  ]
+}

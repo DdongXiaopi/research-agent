@@ -1,0 +1,163 @@
+# 待重封清单（决策 3：P6 暂不启用，且与 P4 合并成一次重封）
+#
+# 背景：启用下面**任何一项**都会改变协议指纹 ⇒ 必须重跑 final_holdout 基线
+# （`configs/experiment.http.yaml` 里的 doc_id_scheme / 基线提示词都属于协议）。
+# 而 suppqa 的揭盲预算已经 2/2 用满并退役（`rsi.py final-budget` 可查）。
+#
+# 所以规则是：**要么全不做，要么一次性全做**。
+# 单独为其中一项申请一次 override，等于把唯一那次"重封授权"浪费在防御深度上。
+# 目前暴露面已由三件套闭合（封存期不落缓存 + 泄漏扫描 + 协议指纹校验），
+# 剩余收益属于纵深防御，不值得单独花一次揭盲预算。
+spec: "1.2"
+updated_at: "2026-09-26"
+policy: >-
+  任一项启用即须重封基线；重封必须与清单里其它所有待办项合并为同一次，
+  并显式授权（rsi.py final-baseline --force --budget-override-reason ...）。
+  未合并的单项重封一律视为预算滥用，代码不会阻止，但账本会留痕。
+
+items:
+  - id: P4
+    title: 基线开引用通道
+    status: done                       # 2026-09-27 随包 A 重封启用
+    why: >-
+      基线提示词不开引用 → 基线 citation_precision 恒 0 → 引用门只能判 n/a，
+      保护不了引用能力。基线也开引用后该门才真正生效。
+    how: 改 configs/prompts/system_prompt.v0.txt 使基线输出 CITED 行，再重封基线。
+    benefit: 引用门禁从 n/a 变为可判定。
+    cost: 一次重封（与 P6 合并则不额外花费）。
+    resolution_2026_09_27: >-
+      随「包 A」并入 pubmedqa 的**同一次**重封（见 docs/adr/0004）：
+      新建基线变体 `baseline-v1-cited`（baseline-v0 的 system prompt 末尾追加一句
+      引用指令），`effective_behaviors` 由 `[]` 变为 `['citation']`，实测
+      `citation_precision = 1.0` ⇒ 不再是恒 0，引用门具备可判定性。
+      baseline-v0 保留未动、ACTIVE 未动（回滚路径完整）。
+      **重封全量跑完后本项方可标为已启用。**
+
+  - id: P6
+    title: doc_id 去 task_id（index_scoped）
+    status: done                       # 2026-09-27 随包 A 重封启用
+    why: >-
+      passage 标识符里嵌 task_id（`cand::suppqa-037::1`）→ 模型回引时把封存题 ID
+      写进响应正文 → 落进 artifacts/http_cache（P7 泄漏）。
+      paper-qa 的 passage 标识是**文档级**的 docname/dockey，与"当前问哪题"无关。
+    how: "configs/experiment.http.p6.yaml 已就绪（doc_id_scheme=index_scoped，gold 用 is_gold 判定）"
+    benefit: 根治 P7（从"封存期禁缓存"的绕行变成源头无泄漏）。
+    cost: 一次重封（与 P4 合并则不额外花费）。
+    note: >-
+      当前缓解手段已经闭合暴露面：封存评估期禁用 HTTP 缓存落盘 + 已清理污染文件
+      + verify 泄漏扫描兜底。故本项属**防御深度**，不单独启用。
+    resolution_2026_09_27: >-
+      随「包 A」在 `configs/experiment.http.pubmedqa-final.yaml` 上启用
+      （`retrieval.doc_id_scheme: index_scoped`），与 P4 / 结论集变更 / 判据轴
+      合并为**同一次**重封（policy 要求）。落点选 pubmedqa 的原因：suppqa 已退役
+      （重封额度 0），而 pubmedqa 从未揭盲、`baseline_reseal` 满额。
+
+  - id: A1
+    title: 新协议下以 ACTIVE 为种子重选（可选，非协议变更）
+    status: done                       # 2026-09-27 定案：已执行，产出 0 候选
+    why: >-
+      当前 champion 是旧协议选拔产物（P1 训练-评估偏移）。重选本身不改协议，
+      **不需要**重封基线 —— 判定走 selection_gate（rsi.py gate-verdict）。
+    how: 以 champion 为种子跑 round/campaign，再走 gate-verdict + promote。
+    benefit: 消除"错位选拔"这一结论层缺陷。
+    cost: 真实 API 一轮进化（不消耗揭盲预算）。
+    note: 这一项与上面两项不同 —— 它不消耗重封预算，可先做。
+    resolution_2026_09_27: >-
+      **已执行（A1-α），产出 0 个通过候选**：3 轮真实进化，
+      `plan.failed` 5 次、skill 触发召回 0.25 < 0.30。
+      此前归因为"提案器饱和"，**2026-09-27 瓶颈解剖给出了更深的原因**：
+      不是饱和，而是**候选空间本身是空的** —— 进化只能切换
+      `citation / rerank / evidence / abstain` 这几个预定义行为开关，而实测
+      champion 的 `rerank` 在当前 `offline-fixture` 后端下是空转的
+      （`gold_in_topk` 两侧都是 148/175，一模一样）。
+      ⇒ 换提案器（路线 A+B，已试）不解决这个，因为可选项还是那几个开关。
+      详见 `docs/bottleneck-analysis-2026-09-27.md`。
+      定案：**不再追加同类进化实验**。若要继续，唯一值得做的是把进化靶子
+      从"证据组织层"移到"推理/决策层"（需重构进化层，且先解决样本量）。
+
+  - id: P9
+    title: 判定的噪声处理（**原方案已按 2026-09-27 实测修正**）
+    status: partially_resolved
+    why: >-
+      2026-09-27 实测：同一请求 body 逐字符相同，跨天重跑 pubmedqa 190 题有
+      **8 题翻转（4.2%）**，方向对称（4 好 4 坏，acc 净变化 0.0pp）。
+      ⇒ 单次运行下 **小于约 5pp 的效应测不出来**，这是本项目目前的测量下限。
+    how: >-
+      `scripts/multiseed_verdict.py`（必须在 RSI_HTTP_NO_CACHE=1 下跑：
+      seed 不进请求 body，不禁缓存第 2 个 seed 起 100% 命中缓存 = 白跑）。
+      判据**预注册**（写死在脚本 + tests/unit/test_multiseed_verdict.py）：
+        ① 一致性：各 seed 主判据符号必须一致，打架 → inconclusive_inconsistent
+        ② 超噪：|Δ均值| 必须 > 噪声地板，否则 inconclusive_below_noise
+        ③ 接地性：无支撑主张率均值 ≤ 5.0pp
+      ①②是硬门槛 —— 不通过是"测不出来"，**不得**解读成"没有提升"。
+    benefit: 给每条结论配一个噪声地板读数，否则无法区分"测不出"和"真没有"。
+    cost: 真实 API 成本线性上升（×seed 数）；不消耗揭盲预算。
+    resolution_2026_09_27: >-
+      **原假设"多 seed 取平均能抵消噪声"只对了一半，已修正：**
+      3 seed × 265 题实测，champion 自身跨 seed 的 acc 极差在三个数据集上
+      **都恰好是 1 题**（litqa2 2.17pp/1.00题、protocolqa 3.45pp/1.00题、
+      pubmedqa 0.53pp/1.01题）。而跨天重跑 pubmedqa 抖的是 8 题。
+      ⇒ **噪声的时间尺度是"跨时段"，不是"跨调用"**。同批次多 seed 抓不到主噪声源，
+      取平均无效。它的真正价值是**让噪声可见并给出地板读数**。
+      两条必须坚持/新增的做法：
+        (a) **判定必须与对照同批次跑** —— 实测有效：Δ 的抖动（0.99pp/5.88pp）
+            远小于单边跨天抖动（4.2%），共同漂移做差时大部分抵消。这条已做到，要守住。
+        (b) **要压低测量下限只能增大样本量** —— protocolqa gate 29 题的噪声地板
+            高达 5.88pp，而它全量只有 90 题，作定量判定结构性不够；
+            已明确改作**接地性守门集（定性）**，定量判定交给 pubmedqa（190 题）。
+    note: 只在关键判定上做，日常扫描仍用单 seed。
+
+  - id: P8
+    title: 证据分块 + 相关性筛选（paper-qa 范式）
+    status: implemented_not_enabled        # 2026-09-27 实测后定案
+    why: >-
+      【立项前提已过期，务必先读这段】原立项说"最长的题模型只能看到
+      42.7%–68.7% 的正文"，那是 N4 **之前** `max_context_chars=6000` 硬截断
+      留下的比例（6000/14188 与 6000/8730）。N4 已把阈值提到 30000，
+      protocolqa 的全文 protocol 现在完整进 prompt，"读不完"这个问题已不存在。
+    how: >-
+      实现见 `src/retrieval/chunking.py`（按步骤/句边界切块 → 逐块与"问题+选项"
+      打分 → 预算内取高分块 → 按原文顺序拼回并标注省略量），配置见
+      `configs/experiment.http.p8.yaml`。属检索层判据，进协议指纹（追加式，
+      关闭时逐字等于旧值，不影响已封存基线）。
+    resolution_2026_09_27: >-
+      **实测结论：不启用。** protocolqa dev 61 题 × 2 批次（正序 + 反序禁缓存），
+      效应方向完全一致：coverage +11.5~18.0pp、accuracy +3.28/+8.19pp，
+      但主判据 answered_precision **回退** —— b1500 −7.47/−4.66pp（超噪声地板
+      3.3pp）、b3000 −2.76/−1.33pp（低于地板）；b3000 另需 +30% prompt token。
+      `verdict.pair_triple` 判定 primary_non_regression=false。
+      机制：分块让模型更容易"觉得证据够了"，弃权率 0.475→0.295；
+      多答的 11 题里 6 题答错 —— 收益是**降低弃权**，不是提高每答对率，
+      而本项目明令 precision 为主轴、不许用覆盖度换精度。
+    why_no_headroom: >-
+      离线诊断（零 API）已经预判了这一点：
+        (a) 预算中性下 gold 信号 27→26、干扰项 24→25，中位增益 ×1.0
+            （同预算 + 同词面口径下，"挑两块 700"不比"挑一块 1400"捞得多）；
+        (b) 预算 1500 已捕获长证据全量信号的 84%（3000 才 95%）；
+        (c) 更关键：protocolqa 是唯一 context 非空的数据集，context 就是完整
+            protocol。实测 gold 不在 top_k 的 7 题精度 0.500 vs 在 top_k 的 54 题
+            0.571 —— 召回通道被旁路，改 docs 侧天然没有大量级效应。
+    resolution_pubmedqa_2026_09_27: >-
+      **pubmedqa 真实对照已完成（D5），结论仍是"不启用"，且理由更硬。**
+      selection_gate 190 题、off vs b1500、禁缓存同批次：
+      主判据 answered_precision −0.91pp（噪声地板 1.6pp）⇒ inconclusive_below_noise，
+      McNemar p=0.134；accuracy / coverage 各 −4.21pp；prompt token −16%（唯一稳定好处）。
+      两个决定性观察：
+        (a) `gold_in_topk` 在 off 与 b1500 下**都是 0.889** —— 分块根本没改变召回，
+            只改变了"从已召回文档里挑哪些字符"，而 pubmedqa 证据短（p50 1352 < 1500
+            预算）⇒ 98%+ 是 passthrough，这个 −0.91pp 几乎不可能是真实效应；
+        (b) 与 protocolqa 上 coverage **+11.5~18pp** 相比，pubmedqa 是 **−4.21pp**，
+            **方向相反** ⇒ 同一个改动在两个集上效应方向都不一致，说明是噪声非机制。
+      产物：`artifacts/probe/chunking_real_pubmedqa.json`。
+    caveat: >-
+      litqa2 仍未做真实对照（离线显示 98%+ passthrough）。但按
+      `docs/bottleneck-analysis-2026-09-27.md`：检索侧的理论天花板只有 **1.14pp**
+      （top_k=3 已捞到语料内 98.7% 的 gold），低于噪声地板 0.9pp ⇒
+      **检索侧改动在原理上不可测**，litqa2 的对照即使补做也不会改变结论。
+    reopen_condition: >-
+      **已收紧**：此前说"主判轴改为 accuracy 时可重开"，但 pubmedqa 对照显示
+      P8 在两个集上效应方向相反（protocolqa coverage +11.5~18pp vs pubmedqa −4.21pp），
+      说明那不是稳定机制。真正的前提已变为：**只有当检索后端不再是固定夹具**
+      （即 gold_in_topk 变成可变量）时，检索侧改动才重新值得评估。
+    note: >-
+      详见 docs/p8-evidence-chunking-2026-09-27.md。

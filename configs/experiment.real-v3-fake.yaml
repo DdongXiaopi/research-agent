@@ -1,0 +1,155 @@
+# 真实模型配置（**不用于离线回归**）—— 只在需要接真实 LLM 时显式指定：
+#   python scripts/rsi.py baseline --config configs/experiment.http.yaml --datasets litqa2 --limit 20
+#
+# R3 对照：与 experiment.real-v3.yaml **完全同构**（同一套 v3 真实语料、同一批因子），
+# 只把 provider 换回 fake —— 用来对比"离线模拟器 vs 真实模型"的因子效应差多少。
+# 与 configs/experiment.http.yaml 的差异：retrieval.corpus_version = real-v3
+#
+# 与 configs/experiment.yaml 的差异：
+#   1. models.task.provider / runtime.provider: fake → http
+#   2. 新增 http 段（端点、模型、思考开关、限流）
+#
+# 其余（split 划分、门禁、判据版本）**必须保持一致**，否则指纹不同、结果不可比。
+# 密钥不写在这里，从环境变量 SILICONFLOW_API_KEY 读（见 src/runtime/provider.py）。
+spec_version: "1.2"
+domain_profile: biomedical
+
+models:
+  task:
+    provider: fake
+    model_id: fake-deterministic-v1
+    base_url: https://api.siliconflow.cn/v1
+    api_key_env: SILICONFLOW_API_KEY
+    temperature: 0
+    max_tokens: 512
+    # 实测：只有**顶层** enable_thinking 生效；chat_template_kwargs 会被静默忽略，
+    # thinking_budget=0 直接 400。开着思考会让 completion token ×70、单题 12s。
+    enable_thinking: false
+    timeout: 120
+    max_retries: 3
+    # 【N4】证据呈现阈值：属协议，改了会变指纹（详见 docs/protocolqa-analysis-2026-09-27.md）
+    max_context_chars: 30000    # protocolqa 证据 max 14188 字符，旧默认 6000 会切掉 38% 的题
+    max_doc_chars: 1500         # 单条 passage 上限，本次不动（保持单一变量）
+  reflection:
+    provider: fake
+    model_id: fake-reflection-v1
+  judge:
+    provider: fake
+    model_id: exact-match-v1
+
+runtime:
+  provider: fake
+  disable_pi_builtin_tools: [bash, powershell, edit, write]
+  max_model_calls: 12
+  max_tool_calls: 20
+  fake_noise: 0.0
+
+tools:
+  active: [workspace.read, artifact.write, academic.search, fulltext.resolve, citation.verify]
+  raw_shell: deny
+  raw_network: deny          # 真实 provider 必须联网；仅限本配置文件使用
+
+retrieval:
+  backend: offline-fixture
+  top_k: 3
+  # R0：真实论文语料（gold=真实证据不追加答案句；干扰=其它题真实段落）
+  corpus_version: real-v3
+
+skills:
+  release_id: baseline-v0
+  registry: skills/registry.yaml
+  mutable_groups: [G-main, G-adj, G-common, G-crystallized]
+  frozen_groups: [G-verify]
+  crystallized_group: G-crystallized
+  description_evolution_groups: [G-main, G-adj]
+  recall_min_score: 2
+
+evaluation:
+  manifests: [litqa2.json, protocolqa.json, scholarqa_cs.json, suppqa.json]
+  datasets: [litqa2, protocolqa]
+  transfer_datasets: [scholarqa_cs]
+  # ⚠️ 真实跑测只覆盖 dev_optimize / selection_gate。suppqa 已决定不揭盲，
+  #    任何 --split final_holdout 的调用都不应走本配置。
+  primary_final_datasets: [suppqa]
+  final_holdout_access: evaluator_only
+  seed: 20260924
+  seeds: [20260924, 20260925, 20260926]
+  require_split_freeze: true
+  max_tasks_per_round: 40
+  main_metric: accuracy
+  bootstrap:
+    B: 10000
+    rng_seed: 20260924
+
+evolution:
+  allowed_artifacts: [system_prompt, skill_description, skill_body, new_skill]
+  max_candidates_per_round: 5
+  max_rounds: 8
+  reflection_backend: deterministic-stub
+  behavior_channels:
+    enabled: true
+    owner:
+      prompt: [rerank, citation]
+      skill_body: [evidence, abstain]
+      description: [recall]
+    enforce_in_evolution: true
+  gepa:
+    enabled: false
+    budget: light
+  crystallization:
+    min_procedure_steps: 3
+    min_trigger_recall: 0.30
+    max_description_similarity: 0.60
+    max_cross_domain_trigger: 0.20
+    max_non_target_trigger: 1.0
+    cross_domain_negative_limit: 0
+
+gates:
+  static:
+    max_prompt_chars: 8000
+    max_description_chars: 400
+    max_body_chars: 6000
+    min_procedure_steps: 3
+    max_procedure_steps: 12
+    forbidden_patterns:
+      - "ignore previous"
+      - "ignore all previous"
+      - "disregard the system"
+      - "rm -rf"
+      - "curl "
+      - "wget "
+      - "bash -c"
+      - "powershell"
+      - "send your api key"
+      - "exfiltrate"
+      - "disable the guardrail"
+      - "override the policy"
+    require_single_artifact: true
+  accept:
+    require_static_gate: true
+    main_metric_non_regression: true
+    require_human_review: true
+    gate_min_delta_pp: 1.0
+    gate_min_prob_delta_gt_0: 0.90
+    tolerance:
+      cost_pct: 15
+      p95_latency_pct: 20
+      citation_precision_pp: 1.0
+
+review:
+  release: required
+  final_holdout_unlock: required
+
+execution:
+  enabled: false
+  max_expr_chars: 400
+  max_nodes: 200
+  max_output_chars: 2000
+  allow_latex: true
+  wsl2:
+    enabled: false
+    note: "高风险执行（任意 Python / TeX 编译）专用；未启用时相关调用显式失败"
+
+privacy:
+  mode: public_only
+  redact_before_persist: true

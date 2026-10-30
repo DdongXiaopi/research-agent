@@ -1,0 +1,5 @@
+# Optional development dependency for the upstream MIPROv2 optimizer.
+-c ./requirements-optimizers.constraints.txt
+# The vendored snapshot is locked in UPSTREAM_LOCK.yml; vendor source is read-only.
+-e ./vendor/dspy-main/dspy-main[optuna]
+optuna==5.0.0

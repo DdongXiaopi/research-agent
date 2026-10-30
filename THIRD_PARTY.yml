@@ -1,0 +1,83 @@
+# 第三方组件与许可记录（Spec §1.6 / 风险 R5）
+#
+# 现状（2026-10-11）：本地若干 vendor 快照包含根 LICENSE/NOTICE 或包元数据声明，
+# 不能笼统称为“均无 LICENSE”。逐项证据、用途范围和未决项见
+# docs/vendor-license-audit-2026-10-10.md 与 UPSTREAM_LOCK.yml。
+# 根仓库许可证不自动覆盖数据集、子包、node_modules 依赖或单个 Skill。
+# 公开源码快照（2026-10-28）不包含 vendor/、data/、历史实验产物或
+# node_modules/；项目自有代码使用根目录 MIT LICENSE。可选依赖由使用者
+# 按各自许可证单独安装。历史审计项目不等于对未来分发的自动许可批准。
+# 在具体 Skill 许可审核完成前：
+#   1. 任何第三方 Skill 都不整库导入运行时
+#   2. M1 冷启动使用本项目自撰 Skill（SELF-AUTHORED）
+#   3. 对外报告不得声称"已完成第三方许可审核"
+
+runtime_dependencies:
+  python:
+    verified_environment: "Python 3.12.14 (project .venv; checked 2026-10-11)"
+    minimal_runtime_required: [PyYAML==6.0.3, requests==2.34.2]
+    optional_optimizer_requirements: requirements-mipro.txt
+    optional_document_requirements: requirements-documents.txt
+    optional_paperqa_requirements: requirements-paperqa.txt
+    document_licenses: "paper-qa 2026.8.12: Apache-2.0; pypdf 6.21.4: BSD-3-Clause. Optional installations retain their own transitive licenses; no library code is bundled in the public snapshot."
+    split_preparation_only: [pyarrow, pandas]
+    note: "最小离线 smoke 使用 requirements.txt；在线 MIPRO 还需 requirements-mipro.txt。早期 Python 3.9/离线无法安装的描述已不适用于当前环境。"
+  pi_bridge_npm:
+    lockfile: tools/pi-bridge/package-lock.json
+    installed_tree_inventory: artifacts/provenance/pi-bridge-dependency-license-inventory-20261011.json
+    inventory_sha256: a9015fbecdd718fe0c06dbbda0ab4a125b075b7e2592d937072f699f9aca33ad
+    measured_at: 2026-10-11
+    locked_packages: 117
+    installed_packages: 92
+    missing_optional_platform_packages: 25
+    missing_required_packages: 0
+    installed_version_mismatches: 0
+    installed_without_license_file: 12
+    status: "本机依赖树和版本可复核；许可证声明不是完整的分发许可审查，12 个包仅有 package.json 声明"
+
+public_source_bundle:
+  root_code_license: MIT
+  vendored_source_included: false
+  datasets_included: false
+  npm_packages_included: false
+  baseline_releases: "项目自撰 Prompt 和 Skill 快照；正文及注册表另有 SELF-AUTHORED 标记"
+  gepa_patch: "patches/gepa/windows-utf8-logger.patch 包含锁定 GEPA 源码的少量上下文；上游 MIT 版权与许可文字随 THIRD_PARTY_NOTICES.md 提供。"
+  limits: "本清单仅描述当前公开源码快照；以后导入 vendor 子包、数据或第三方 Skill 时重新审核。"
+
+vendored_code:
+  status: PARTIALLY_VERIFIED
+  reason: "多个仓库根许可证及官方数据卡已核对并记录；快照提交修订、部分子包/数据许可及待导入 Skill 仍须逐项核实"
+  action_required:
+    - "继续为无 .git 元数据的快照锁定可验证的上游提交/文件级来源"
+    - "scientific-agent-skills 仅在选定具体 Skill 后逐项核对 frontmatter、随附许可与上游来源，再决定是否导入"
+    - "区分仓库代码许可、评测数据许可、子包许可和传递依赖许可"
+    - "Pi bridge 的 12 个无独立许可文件 npm 包在分发前复核上游许可文本与 NOTICE 要求"
+
+self_authored_assets:
+  files:
+    - configs/prompts/system_prompt.v0.txt
+    - skills/registry.yaml
+    - skills/main/*.md
+    - skills/common/*.md
+    - skills/verify/*.md
+    - configs/task_input/registry.v2.yaml
+    - configs/task_input/skills/*.md
+    - configs/prompts/system_prompt.clinifact.v2.txt
+  license: SELF-AUTHORED
+  note: "历史 baseline-v0 为 6 个自撰 Skill；当前 CliniFact v3 不可变快照含 10 个非空 Skill，逐项标记 SELF-AUTHORED，load_state 已验证正文/注册表哈希。无第三方 Skill 导入该运行时。"
+
+datasets:
+  - name: LitQA2
+    declared: CC-BY-SA-4.0
+    source: "Hugging Face official futurehouse/lab-bench LitQA2 dataset card; checked 2026-10-10"
+    canary: "含 canary 字符串，禁止进入任何训练语料；本仓库只做评测，不训练"
+  - name: ProtocolQA
+    declared: CC-BY-SA-4.0
+    source: "Hugging Face official futurehouse/lab-bench ProtocolQA dataset card; checked 2026-10-10"
+    canary: "同上"
+  - name: BioASQ 13b-derived UniTor answer-generation training data
+    underlying_data_license: "BioASQ official participant-area page declares CC-BY-2.5 for BioASQ challenge data"
+    repackaging_repository_license: "MIT applies to UniTor code unless otherwise stated; its README says dataset licenses are separate"
+    source: "BioASQ official dataset terms and crux82/BioASQ2025-UNITOR README; local source bytes are pinned in data/manifests/bioasq_unitor_task_input.json"
+    conditions: "BioASQ requires registration for challenge data downloads and requests BioASQ acknowledgment/citation. Verify access provenance and exact derived-file lineage before redistribution or provider transfer. Do not infer that the UniTor data file is MIT-licensed."
+    project_status: "exploration-only; train-derived rows have prior exposure and UniTor dev is disqualified from blind confirmation"

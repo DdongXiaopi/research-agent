@@ -1,0 +1,2 @@
+# Optional PDF full-text parser (BSD-3-Clause), run in a bounded child process.
+pypdf==6.21.4

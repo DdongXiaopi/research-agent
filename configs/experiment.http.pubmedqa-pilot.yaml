@@ -1,0 +1,244 @@
+# 【包 A：PubMedQA 主结论集配置】2026-09-27 —— 本项目**新的结论出口**。
+#
+# 为什么必须换结论集（D1）：Spec §418 里唯一可作结论的 final_holdout 集是 suppqa，
+# 而它已经**退役**（揭盲额度 0/0）且基线贴地（acc 0.024 / 弃权 89%，+13.4pp 系低杆
+# 效应，caveat #1 明令不得作为结论）⇒ 项目此前实际处于「无结论集」状态。
+#
+# 为什么选 pubmedqa（三条都是硬的）：
+#   1. 许可唯一明确：本项目所有数据集中只有它许可是清楚的（代码 MIT、数据 MIT）；
+#      LitQA2 / ProtocolQA 至今「未确认」。
+#   2. 测量功效最高：selection_gate 190 题，实测噪声地板 0.89pp；
+#      对比 protocolqa 29 题 / 5.88pp、litqa2 46 题 / 4.3pp。
+#      在跨时段噪声 4.2% 之下，它是唯一能把测量下限压到 2pp 以下的集。
+#   3. 揭盲额度满格：final_access.log 与账本快照里都**没有 pubmedqa**
+#      ⇒ 从未被揭盲，可用 final_unblind 2 + baseline_reseal 1。
+#
+# 本配置与 experiment.http.pqa.yaml 的实质差异（合并为**一次**重封，见
+# configs/pending_reseal.yaml 的 policy：待重封项要么全不做、要么一次性全做）：
+#   1. primary_final_datasets: suppqa → pubmedqa（结论出口）
+#   2. retrieval.doc_id_scheme: index_scoped（P6，根除封存题 ID 落盘）
+#   3. 基线换成开引用通道的 baseline-v1-cited（P4，让引用门从 n/a 变为可判定）
+#   4. sealed_pairing: false → true（重封后本配置就是配对的，不作相对判定用）
+#
+# 判据轴：main_metric 与 primary_axis 同为 answered_precision（D2 同源）。
+#
+# ⚠️ 代价：pubmedqa 是「yes/no/maybe + 上下文即摘要」的三选一任务，难度明显
+#    低于 LitQA2 / ProtocolQA。对外报告必须显式披露「结论集已换为较易的集合，
+#    与历史跨集不可比」。
+#
+# ⚠️ 揭盲预算：本配置消耗 pubmedqa 的 baseline_reseal 1（重封）+ final_unblind 1
+#    （P8 对照，因 P8 指纹不同）。用完 baseline_reseal 后没有第二次机会，
+#    全量前必须先跑小样本 smoke。
+#
+# 原配置说明（experiment.http.yaml）：
+# 【真实结论链路的默认配置】—— 项目对外结论一律出自本配置：
+#   python scripts/rsi.py baseline --config configs/experiment.http.yaml --datasets litqa2
+#
+# 与 configs/experiment.yaml（离线 smoke）的差异只有两处：
+#   1. models.task.provider / runtime.provider: fake → http
+#   2. 新增 http 段（端点、模型、思考开关、限流）
+# 语料（real-v3）与选项口径（注入 Insufficient）两边**必须一致**，否则指纹不同、结果不可比。
+#
+# 为什么不直接用离线配置出结论：离线模拟器的打分是"段落与选项的词面重叠"，
+# 在真实论文语料（v3）上它打不出靶子 —— 八条件全 25%（随机水平）。
+# 所以 v3 语料 + fake provider = 没有信息量的 smoke test，结论只能来自真实模型。
+#
+# 密钥不写在这里，从环境变量 SILICONFLOW_API_KEY 读（见 src/runtime/provider.py）。
+spec_version: "1.2"
+domain_profile: biomedical
+
+models:
+  task:
+    provider: http
+    model_id: Qwen/Qwen3-8B
+    base_url: https://api.siliconflow.cn/v1
+    api_key_env: SILICONFLOW_API_KEY
+    temperature: 0
+    max_tokens: 512
+    # 实测：只有**顶层** enable_thinking 生效；chat_template_kwargs 会被静默忽略，
+    # thinking_budget=0 直接 400。开着思考会让 completion token ×70、单题 12s。
+    enable_thinking: false
+    timeout: 120
+    # 免费档持续 429 时 3 次重试不够（实测整轮崩）；provider 侧已支持
+    # Retry-After + 指数退避封顶 30s，这里给足 6 次让退避真正生效。
+    max_retries: 6
+    # 【N4】证据呈现阈值：属协议，改了会变指纹（详见 docs/protocolqa-analysis-2026-09-27.md）
+    max_context_chars: 30000    # protocolqa 证据 max 14188 字符，旧默认 6000 会切掉 38% 的题
+    max_doc_chars: 1500         # 单条 passage 上限，本次不动（保持单一变量）
+  reflection:
+    # 【pilot 2026-09-27】真实模型反思。与 llmreflect 配置一致的两点：
+    #   temperature 0.7（反思要多样性，0 会退化成又一个模板）；
+    #   max_tokens 放大到 1200（产出是**整段 prompt**，不是一句话）。
+    provider: http
+    model_id: Qwen/Qwen3-8B
+    base_url: https://api.siliconflow.cn/v1
+    api_key_env: SILICONFLOW_API_KEY
+    temperature: 0.7
+    max_tokens: 1200
+    enable_thinking: false
+    timeout: 120
+    max_retries: 6
+  judge:
+    provider: fake
+    model_id: exact-match-v1
+
+runtime:
+  provider: http
+  disable_pi_builtin_tools: [bash, powershell, edit, write]
+  max_model_calls: 12
+  max_tool_calls: 20
+  fake_noise: 0.0
+
+tools:
+  active: [workspace.read, artifact.write, academic.search, fulltext.resolve, citation.verify]
+  raw_shell: deny
+  raw_network: allow          # 真实 provider 必须联网；仅限本配置文件使用
+
+retrieval:
+  backend: offline-fixture
+  top_k: 3
+  # 【协议升级 2026-09-26】与主线一致：真实语料（v3）。
+  # 真实模型下这是**唯一能出结论**的语料配置（v2 测的是识破模板假话）。
+  corpus_version: real-v3
+  # 【P6/P7 根因修复 2026-09-27 启用】passage 标识符不含 task_id
+  #   （`cand::1` 而非 `cand::suppqa-037::1`）。原方案让模型把封存题 ID 回引到
+  #   响应正文，再被落盘进 artifacts/http_cache，使封存 ID 出现在进化路径可读处
+  #   （verify 泄漏扫描实测变红）。本项属协议 ⇒ 必须与基线重封同批完成。
+  doc_id_scheme: index_scoped
+  # passage 标识符方案（默认 task_scoped，即 `cand::<task_id>::<i>`）。
+  # 该字段**属于协议**：切到 index_scoped 后必须重跑封存基线，
+  # 否则终评/进化会因协议不一致直接 raise。已封好的 P6 变体见
+  # configs/experiment.http.p6.yaml（含使用顺序说明）。
+
+skills:
+  release_id: baseline-v0
+  registry: skills/registry.yaml
+  mutable_groups: [G-main, G-adj, G-common, G-crystallized]
+  frozen_groups: [G-verify]
+  crystallized_group: G-crystallized
+  description_evolution_groups: [G-main, G-adj]
+  recall_min_score: 2
+
+evaluation:
+  manifests: [litqa2.json, protocolqa.json, scholarqa_cs.json, suppqa.json,
+              pubmedqa.json]
+  # 【D1】判定面收敛到 pubmedqa（噪声地板最低的集；见文件头与 caveat #10）
+  datasets: [pubmedqa]
+  # 【pilot】本配置改了反思后端与提案形态 ⇒ 不与封存基线配对，
+  #   只做「候选 vs 起点」的相对判定；不得用于产��封存集结论。
+  sealed_pairing: false
+  transfer_datasets: [scholarqa_cs]
+  # 【D1】结论出口 = pubmedqa 的 final_holdout（175 题，从未揭盲）。
+  #    suppqa 已退役且贴地，不再作为 primary；litqa2 / protocolqa 额度只剩 1 次
+  #    且噪声地板 4.3pp / 5.88pp，用完也换不来可判定的结论。
+  primary_final_datasets: [pubmedqa]
+  final_holdout_access: evaluator_only
+  seed: 20260924
+  seeds: [20260924, 20260925, 20260926]
+  require_split_freeze: true
+  # 【协议升级 2026-09-26】与主线一致：注入官方 "Insufficient information" 选项。
+  # 三指标同看：accuracy / coverage / answered_precision。
+  insufficient_option: true
+  max_tasks_per_round: 40
+  # 【D2 判据轴同源 2026-09-27】选拔轴与判定轴必须是同一个。
+  #   此前 main_metric=accuracy 只用于选拔（round.py），而判定层（verdict.py）的
+  #   primary_axis 是硬编码默认 answered_precision、无任何配置入口 ⇒ 两条轨各自
+  #   生效、无人裁定；同一份数据能得出两套相反的启用结论（P8 就卡在这里）。
+  #   现在两者同源并显式写出，且已纳入 check_protocol（历史基线按当时生效值补全）。
+  main_metric: answered_precision
+  primary_axis: answered_precision
+  primary_axis_tolerance_pp: 0.0
+  bootstrap:
+    B: 10000
+    rng_seed: 20260924
+
+evolution:
+  allowed_artifacts: [system_prompt, skill_description, skill_body, new_skill, task_demos]
+  max_candidates_per_round: 5
+  max_rounds: 8
+  reflection_backend: llm
+  # 【pilot 2026-09-27】产出形态从"追加一句"改为 GEPA 式"整段改写"。
+  #   理由：追加形态的候选空间只有"加哪句触发词"（量级约 2^4），而 vendor
+  #   （gepa / dspy MIPROv2）的候选是整条 instruction 的自由文本改写。
+  proposer: rewrite
+  # few-shot 引导（dspy MIPROv2 的核心维度，本项目此前完全空白）
+  fewshot_enabled: true
+  fewshot_k: 3
+  reflection_max_attempts: 2
+  behavior_channels:
+    enabled: true
+    owner:
+      prompt: [rerank, citation]
+      skill_body: [evidence, abstain]
+      description: [recall]
+    enforce_in_evolution: true
+  gepa:
+    enabled: false
+    budget: light
+    # Real task-input searches need room beyond the one full validation pass.
+    max_metric_calls: 120
+    max_candidate_proposals: 8
+    reflection_minibatch_size: 5
+  crystallization:
+    min_procedure_steps: 3
+    min_trigger_recall: 0.30
+    max_description_similarity: 0.60
+    max_cross_domain_trigger: 0.20
+    max_non_target_trigger: 1.0
+    cross_domain_negative_limit: 0
+
+gates:
+  static:
+    max_prompt_chars: 8000
+    max_description_chars: 400
+    max_body_chars: 6000
+    min_procedure_steps: 3
+    max_procedure_steps: 12
+    forbidden_patterns:
+      - "ignore previous"
+      - "ignore all previous"
+      - "disregard the system"
+      - "rm -rf"
+      - "curl "
+      - "wget "
+      - "bash -c"
+      - "powershell"
+      - "send your api key"
+      - "exfiltrate"
+      - "disable the guardrail"
+      - "override the policy"
+    require_single_artifact: true
+  accept:
+    require_static_gate: true
+    main_metric_non_regression: true
+    require_human_review: true
+    gate_min_delta_pp: 1.0
+    gate_min_prob_delta_gt_0: 0.90
+    tolerance:
+      # 【D6 已标定 2026-09-27】**政策上限，不是噪声容差**。实测成本几乎零噪声
+      #   （单侧相对 σ = 0.004%，见 scripts/probe_cost_gate.py），故不存在
+      #   "按噪声标定"这回事；15% 的语义是"愿意为改进多付多少"。
+      cost_pct: 15
+      p95_latency_pct: 20
+      citation_precision_pp: 1.0
+      # 【B / P3】无支撑主张率（接地性/幻觉近似）：候选只允许比基线高 ≤5pp，
+      # 超过即判失败（hermes 式"各子项不回退"门禁）。
+      unsupported_answer_rate_pp: 5.0
+
+review:
+  release: required
+  final_holdout_unlock: required
+
+execution:
+  enabled: false
+  max_expr_chars: 400
+  max_nodes: 200
+  max_output_chars: 2000
+  allow_latex: true
+  wsl2:
+    enabled: false
+    note: "高风险执行（任意 Python / TeX 编译）专用；未启用时相关调用显式失败"
+
+privacy:
+  mode: public_only
+  redact_before_persist: true

@@ -1,0 +1,108 @@
+# M1 cold-start set: ten self-authored Skills; no vendor Skill content is imported.
+# Each item declares SELF-AUTHORED provenance and the inventory test checks its
+# readable body and positive/negative route examples. Keep baseline-v0 immutable.
+release_id: baseline-v1
+
+skills:
+  - name: litqa-literature-synthesis
+    group: G-main
+    license: SELF-AUTHORED
+    description: >
+      Answer biomedical multiple-choice questions by synthesizing peer-reviewed literature about
+      genes, proteins, cell lines, assays, inhibitors, antibiotics, antibiotic resistance,
+      mutations, expression, pathways, model organisms, and clinical or patient findings.
+    triggers:
+      [gene, protein, cell, assay, inhibitor, antibiotic, antibiotics, resistance, resistant,
+       mutation, expression, pathway, organism, clinical, patient, literature, study, paper,
+       published, reported, evidence, doi]
+    path: skills/main/litqa-literature-synthesis.md
+
+  - name: protocol-troubleshooting
+    group: G-main
+    license: SELF-AUTHORED
+    description: >
+      Diagnose why a wet-lab protocol produced a poor result and identify which step, reagent,
+      buffer, concentration, centrifugation speed, temperature, or incubation change would fix it.
+      Covers cell isolation, PBMC preparation, staining, transfection, culture, and sample storage.
+    triggers:
+      [protocol, step, reagent, buffer, solution, concentration, centrifuge, centrifugation,
+       incubate, temperature, pellet, cells, isolation, wash, resuspend, storage, freeze, protocol]
+    path: skills/main/protocol-troubleshooting.md
+
+  - name: evidence-citation-check
+    group: G-verify
+    frozen: true
+    license: SELF-AUTHORED
+    description: >
+      Before finalizing an answer, verify that each checkable claim is backed by a retrievable
+      source with a DOI or URL, and record the source identifier next to the claim.
+    triggers: [citation, cite, source, doi, reference, verify, support, claim]
+    path: skills/verify/evidence-citation-check.md
+
+  - name: statistical-interpretation
+    group: G-adj
+    license: SELF-AUTHORED
+    description: >
+      Interpret statistical results reported in studies: p-values, confidence intervals, effect
+      sizes, sample size, replicates, controls, and whether a conclusion is supported.
+    triggers: [p-value, significance, confidence, interval, effect, sample, replicate, control,
+               statistics, statistical, cohort, n=]
+    path: skills/main/statistical-interpretation.md
+
+  - name: terminology-normalization
+    group: G-common
+    license: SELF-AUTHORED
+    description: >
+      Normalize gene symbols, protein names, chemical names, and synonyms before searching,
+      so that equivalent terms and historical aliases retrieve the same literature.
+    triggers: [synonym, alias, symbol, nomenclature, naming, term, terminology, abbreviation]
+    path: skills/common/terminology-normalization.md
+
+  - name: answer-formatting
+    group: G-common
+    license: SELF-AUTHORED
+    description: >
+      Produce a concise final answer for a multiple-choice item: state the chosen option, one
+      sentence of justification, and the source identifiers used.
+    triggers: [format, final, answer, option, choice, multiple-choice, output]
+    path: skills/common/answer-formatting.md
+
+  - name: population-scope
+    group: G-main
+    license: SELF-AUTHORED
+    description: >
+      Identify the studied population and relevant subgroups, then check whether the
+      supplied findings apply to the population named in the question.
+    triggers: [population, subgroup, participant, participants, enrolled, eligibility,
+               inclusion, exclusion, demographic, applicability]
+    path: configs/task_input/skills/population-scope.md
+
+  - name: mixed-results-synthesis
+    group: G-main
+    license: SELF-AUTHORED
+    description: >
+      Reconcile findings that differ across outcomes, interventions, conditions, or
+      study groups while preserving reported disagreement.
+    triggers: [mixed, conflicting, inconsistent, discordant, outcome, outcomes,
+               intervention, interventions, condition, endpoint, findings]
+    path: configs/task_input/skills/mixed-results-synthesis.md
+
+  - name: effect-estimate-interpretation
+    group: G-adj
+    license: SELF-AUTHORED
+    description: >
+      Interpret reported odds, hazard, and relative-risk estimates with their
+      comparator, adjustment, confidence interval, and uncertainty.
+    triggers: [odds, ratio, hazard, adjusted, estimate, estimates, relative-risk,
+               confidence-interval, association]
+    path: configs/task_input/skills/effect-estimate-interpretation.md
+
+  - name: clinical-study-design
+    group: G-main
+    license: SELF-AUTHORED
+    description: >
+      Identify a biomedical study's reported design, comparator, endpoint, and
+      participant criteria without treating design labels as outcome evidence.
+    triggers: [randomized, randomised, observational, comparator, endpoint,
+               prospective, retrospective, inclusion, exclusion, design]
+    path: configs/task_input/skills/clinical-study-design.md

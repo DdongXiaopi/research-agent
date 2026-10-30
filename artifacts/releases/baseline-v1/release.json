@@ -1,0 +1,23 @@
+{
+  "artifacts": {
+    "skills_body_sha256": {
+      "answer-formatting": "1183b1957b3c71865a477cbe6f0bbfd3bcc9f78f2cc408f13820fc3d52f01f03",
+      "clinical-study-design": "1166edcad20d337a9e89666649ebcd842ae8ca02bf48e27027c58822ba35dfd8",
+      "effect-estimate-interpretation": "37dff6b2e32eb0465a792b6b07cf150dfb4f169ff0e00b1914c2fc3922bd27b7",
+      "evidence-citation-check": "f3673b736caff83d6e69697ced3fb56f6f63b1f1738bed35c045c759a71352de",
+      "litqa-literature-synthesis": "98db09b99cfeedc075c7806d6eaf99d474e54abb647697301c84ffd670869919",
+      "mixed-results-synthesis": "a139a71232a028b3535477583a66a0850090604957d0988f8d5e8334acd9fc13",
+      "population-scope": "973a11efb67f7505201b75dfc71607d06bb99cf1ee672934805e8ec9e47028fe",
+      "protocol-troubleshooting": "181334b08ebf939c915190cb9bbd219f8352d8552c4e80361ad4892e034ecd69",
+      "statistical-interpretation": "9423beb6840d7e4481722bde0befcc1b73beb4b427e79bfa3f1c3ba8922cec4c",
+      "terminology-normalization": "6137649da3ddf61799fbedd01ffcae8a98258224a1f62b37e97cc65b62290dc7"
+    },
+    "skills_registry_sha256": "e221ae753128c58c3bdda8f7e5f5569b1c9cbbbc4bd55e5ca86c4a3dfb95221e",
+    "system_prompt_sha256": "051390ab62b90511cce8d1cba68442f4057e5be8a988c037e973977a64d7e376"
+  },
+  "candidate": null,
+  "created_at": "2026-10-10T13:17:16+00:00",
+  "note": "M1 基线（A0）：未进化的 v0",
+  "parent": null,
+  "release_id": "baseline-v1"
+}

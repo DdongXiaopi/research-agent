@@ -1,0 +1,243 @@
+# 上游锁定表（Spec §1.6）
+# 规则：vendor/ 只读；升级上游前跑 contract 测试；
+#       升级 task/reflection/judge 模型必须开新 cohort 并重跑基线，不得接成同一条曲线。
+#
+# ⚠️ license 与版本字段按上游逐项核验；zip 快照通常没有 .git 元数据，
+#    不能仅凭仓库目录名推断版本。未找到随源许可证或明确版本时仍标 UNVERIFIED。
+#    第三方 Skill 仍须逐项审许可；M1 冷启动使用本项目自撰 Skills。
+
+locked_at: 2026-10-11
+
+upstreams:
+  - name: paperqa-document-adapter
+    reuse: optional-native-document-records
+    distribution: paper-qa
+    version: 2026.8.12
+    declared_license: Apache-2.0
+    upstream_repository: https://github.com/Future-House/paper-qa
+    distribution_source: https://pypi.org/project/paper-qa/2026.8.12/
+    wheel_sha256: 4cdf007207dea58edf1c1f3507ca33e1e7737fd8d7a17cb1736a8a089463918c
+    use: "Optional Doc/Text record adapter; retrieval stays local and does not invoke PaperQA agents, embeddings or metadata clients."
+    license_scope_note: "No PyMuPDF/AGPL extra is installed or redistributed by this adapter."
+  - name: pi
+    path: vendor/pi-main/pi-main
+    nested: true            # 多一层同名目录
+    reuse: runtime-base
+    declared_license: MIT
+    license_source: LICENSE
+    license_sha256: 0457f5bcec3b3b211605dfb5d1a49042fd638f3686a410fe099c24a25af13c48
+    license_note: "上游仓库根许可证；随附 node_modules 的第三方依赖各有许可，不由此字段覆盖"
+    use: "harness/{skills,system-prompt,hooks,tools,telemetry} 直接复用；本项目只写 runtime-adapter"
+    forbidden: "不改 Pi 核心；不声称 Pi 自带沙箱"
+    upstream_repository: https://github.com/earendil-works/pi
+    upstream_revision: fde38ed7c2f64434beffc6c0ec3b9994cb89ae23
+    revision_source: https://github.com/earendil-works/pi/commit/fde38ed7c2f64434beffc6c0ec3b9994cb89ae23
+    revision_comparison_record: artifacts/provenance/pi-source-comparison-fde38ed7c2f6-20261011.json
+    revision_scope_note: "Vendor source reference: 1899 upstream files match; 328 local dist outputs are not verified builds. Actual bridge uses the separately pinned npm packages below."
+    identity_verified_at: 2026-10-11
+    imported_at: UNVERIFIED
+
+  - name: pi-agent-core
+    path: tools/pi-bridge/node_modules/@earendil-works/pi-agent-core
+    source_root: "."
+    runtime_provider: pi
+    reuse: runtime-base
+    version: 0.87.1
+    declared_license: MIT
+    license_source: package.json
+    license_note: "npm package MIT declaration; package has no standalone LICENSE file"
+    upstream_repository: https://github.com/earendil-works/pi
+    upstream_revision: f07218c4d4bbc12bef056a7058c3dd49dfe41abe
+    revision_source: https://registry.npmjs.org/@earendil-works/pi-agent-core/0.87.1
+    revision_scope_note: "Publisher gitHead declaration, not independently rebuilt or signature-verified provenance. Exact installed bytes independently match the official npm archive."
+    registry_archive: https://registry.npmjs.org/@earendil-works/pi-agent-core/-/pi-agent-core-0.87.1.tgz
+    integrity: sha512-Zev3B0HK7YS5A4EZQ2XnEqiJuirx6QBiltJ+LpmjV5a/+2IU0cfKtIfnkNkORK707XOvKBY2WRtk7cAwHpbh2Q==
+    archive_sha256: 646267cfa782ae4efcbb936728373e73568f1e16b8520d244f8c1d91088c12c4
+    source_sha256: 11bc158c456a3d5c57a0b383aee1c014bdb5bbaa15c62fc4e2884876ada8f87c
+    source_file_count: 466
+    revision_comparison_record: artifacts/provenance/pi-agent-core-installed-runtime-20261011.json
+    identity_verified_at: 2026-10-11
+    imported_at: UNVERIFIED
+
+  - name: pi-ai
+    path: tools/pi-bridge/node_modules/@earendil-works/pi-ai
+    source_root: "."
+    runtime_provider: pi
+    reuse: runtime-base
+    version: 0.87.1
+    declared_license: MIT
+    license_source: package.json
+    license_note: "npm package MIT declaration; package has no standalone LICENSE file"
+    upstream_repository: https://github.com/earendil-works/pi
+    upstream_revision: f07218c4d4bbc12bef056a7058c3dd49dfe41abe
+    revision_source: https://registry.npmjs.org/@earendil-works/pi-ai/0.87.1
+    revision_scope_note: "Publisher gitHead declaration, not independently rebuilt or signature-verified provenance. Exact installed bytes independently match the official npm archive."
+    registry_archive: https://registry.npmjs.org/@earendil-works/pi-ai/-/pi-ai-0.87.1.tgz
+    integrity: sha512-X/3PfQBnnoeVdO9Cv8zHghUMglzlgNZYGNzoPnbRoGnHl3Rw3TlA2UKSUB7BRHUOxMryHXYa8dnjWZlbRheDZA==
+    archive_sha256: 35b4432f27cc2665f86beebb9af6a39b1251970883c3044bd8be4f4e8c731ca0
+    source_sha256: 7e49ecf97d9088f607d13d58f3dcad5d8dd1fe5e2d18279f07309e6554ad7daa
+    source_file_count: 772
+    revision_comparison_record: artifacts/provenance/pi-ai-installed-runtime-20261011.json
+    identity_verified_at: 2026-10-11
+    imported_at: UNVERIFIED
+
+  - name: dspy
+    path: vendor/dspy-main/dspy-main
+    reuse: library
+    version: 3.4.0b1
+    version_source: dspy/__metadata__.py
+    upstream_repository: https://github.com/stanfordnlp/dspy
+    release_reference_tag: 3.4.0b1
+    release_reference_revision: ecba33763316d2a4c6c756046a1118ecbff033e7
+    upstream_revision: 4b60eb4477e9ae2a0c111c4a1dc477f4f2d04043
+    revision_source: https://github.com/stanfordnlp/dspy/commit/4b60eb4477e9ae2a0c111c4a1dc477f4f2d04043
+    revision_scope_note: "All 709 official regular source files match the immutable commit archive; Python caches and egg-info excluded."
+    revision_comparison_record: artifacts/provenance/dspy-source-comparison-4b60eb4477e9-20261011.json
+    identity_verified_at: 2026-10-11
+    imported_at: UNVERIFIED
+    declared_license: MIT
+    license_source: LICENSE
+    license_sha256: fc84421fcf968a696680dacf66ad53db769f699f557690127c5ccb3f6358cfdb
+    source_root: dspy
+    source_sha256: 2ee02473496a5361cafb490c72b2aa46617e84d1fca4d3a090c5f35e1d87f92d
+    source_file_count: 249
+    source_scope_note: "Exact local package content pin, excluding __pycache__ and .pyc; all 249 package files match the recorded commit archive."
+    mipro_optimizer_source: dspy/teleprompt/mipro_optimizer_v2.py
+    mipro_optimizer_sha256: 6bf7632836d3a54ab0da3f38a8f1963813472312e9c0e3f2ff19b4377af407f3
+    mipro_proposal_sources:
+      - path: dspy/propose/grounded_proposer.py
+        sha256: c9900b74c0997410f915f2a470d39dcd9d55c1fa8b9cdf35799915ec0b1617e3
+      - path: dspy/propose/dataset_summary_generator.py
+        sha256: c791f24b44e2b86714763d6ad5bdb80a06395ef1b55e26eec0dd04e8d0452527
+      - path: dspy/propose/utils.py
+        sha256: 62dc7a141c0fe7df58d26715528f659dc286ed06083d2b8052ee7981504da9cb
+      - path: dspy/propose/propose_base.py
+        sha256: cc6c6e700602a918e7fe27b62ef07ddab5efa6177c8aba3cac334c42f88b2e6e
+      - path: dspy/teleprompt/utils.py
+        sha256: 6242237a2a734dc363db03d6e9263c88d6f48c2f45e1eceee5a62af556df7e4e
+      - path: dspy/predict/predict.py
+        sha256: 0a303ded09b91a946af0f54a1674174890357a63ebf893b7554250cbaccc8aff
+      - path: dspy/signatures/signature.py
+        sha256: 6dc35055b0a3690fb559816c19d89f7a3d5f841c04b409d817ee21f7389b892c
+    mipro_optional_dependency: dspy[optuna]
+    runtime_dependency_status: optional; installed in this workspace via requirements-mipro.txt (optuna==5.0.0)
+    use: "GEPA/MIPROv2候选生成；MIPROv2需optuna，任务执行仍经本项目Pi TaskRunner"
+    forbidden: "不改算法源码；不跨版本混用"
+
+  - name: gepa
+    path: vendor/gepa-main/gepa-main
+    reuse: library
+    version: 0.1.4
+    version_source: pyproject.toml
+    upstream_repository: https://github.com/gepa-ai/gepa
+    upstream_revision: d771eb21b5dd3228bc3f567293d2ccfc423fc900
+    revision_source: https://github.com/gepa-ai/gepa/commit/d771eb21b5dd3228bc3f567293d2ccfc423fc900
+    revision_comparison_record: artifacts/provenance/gepa-source-comparison-d771eb21b5dd-20261011.json
+    revision_scope_note: "595 official files match; the remaining Logger file has the documented pre-existing Windows UTF-8 patch."
+    identity_verified_at: 2026-10-11
+    imported_at: UNVERIFIED
+    patches:
+      - path: patches/gepa/windows-utf8-logger.patch
+        sha256: 113ee0c7293182b32e6fbb1aa18f9fd4f03c72f889b2a7aad23951e02e23d04d
+        adr: docs/adr/0006-gepa-windows-log-encoding.md
+        target: src/gepa/logging/logger.py
+        patched_sha256: 1f20936a52486acfa5fa342940e6829496e417ce816a32fc6212cba65435196a
+    declared_license: MIT
+    license_source: LICENSE
+    license_sha256: 10c47467a961feb40adf3294fe27dd9cba79d4d1b7cf27173b1c34586d4126c3
+    source_root: src/gepa
+    source_sha256: e03a7a8f7b2d188d853e8990fd20c01c5bf522aaeb0bac85704cdc05e8775ab5
+    source_file_count: 134
+    use: "Pareto 候选搜索与预算控制"
+    forbidden: "不改算法源码"
+
+  - name: pk-pi-hermes-evolve
+    path: vendor/pk-pi-hermes-evolve-main
+    reuse: skeleton
+    declared_license: MIT
+    license_source: pk-pi-hermes-evolve-main/LICENSE
+    license_sha256: 1806c2e126908da6721b16b9e6fc33ad3726b7012ca75675d132e129875da03e
+    use: "artifact/lineage/report 目录布局参考；不覆盖原文件的做法"
+    gap: "README 自述尚缺真实执行评测与 Python backend gates —— 由本项目 src/eval + src/governance 补齐"
+
+  - name: hermes-agent-self-evolution
+    path: vendor/hermes-agent-self-evolution-main
+    reuse: method-reference
+    declared_license: MIT
+    license_source: "hermes-agent-self-evolution-main/pyproject.toml (MIT declaration; snapshot has no LICENSE file)"
+    use: "守卫思想、Skill 文件阶段顺序"
+    note: "当前只实现了 Skill 文件阶段，系统 Prompt / 持续改进属其后续阶段"
+
+  - name: asta-bench
+    path: vendor/asta-bench-main
+    reuse: eval-framework
+    declared_license: Apache-2.0
+    license_source: asta-bench-main/LICENSE
+    license_sha256: c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4
+    use: "LitQA2 validation/test 入口与可复现日志（M2 适配）"
+    forbidden: "不改 gold 数据"
+
+  - name: scientific-agent-skills
+    path: vendor/scientific-agent-skills-main/scientific-agent-skills-main
+    nested: true
+    reuse: skill-source
+    declared_license: MIT (repository only)
+    license_source: LICENSE.md
+    license_sha256: 09b02a3c9df3053c55531d503357a9c7cde275970e6c3ceaa1ddf5f0e90b40c1
+    license_note: "每个 Skill 的 frontmatter license 与附带文件优先；尚未选定/审核拟导入的具体 Skills"
+    count: 166               # skills/ 下的 SKILL.md 数量
+    use: "M2 冷启动来源：逐项许可审核 + trigger 测试后导入 10-20 个"
+    forbidden: "不整库安装；仓库级许可 ≠ 每个 Skill 的许可"
+
+  - name: paper-qa
+    path: vendor/paper-qa-main/paper-qa-main
+    nested: true
+    reuse: retrieval-adapter
+    declared_license: Apache-2.0 (repository root)
+    license_source: LICENSE
+    license_sha256: a10f591e3522fbfe867cfde0b35e0594f6f43a51b013540208a1469c9e0b0f62
+    license_note: "锁定用途仅为 src/paperqa/clients；未使用的 packages/paper-qa-pymupdf 子包另带 AGPL-3.0 LICENSE，不随根许可覆盖"
+    use: "只取 src/paperqa/clients/（Crossref/S2/OpenAlex/Unpaywall + 错误隔离）"
+    note: "M1 主线用 offline-fixture；真实检索 M2 接入（需 pip install paper-qa）"
+
+  - name: litqa2
+    path: vendor/LitQA2/train-00000-of-00001.parquet
+    reuse: dataset
+    declared_license: CC-BY-SA-4.0
+    license_source: "Hugging Face dataset card futurehouse/lab-bench, LitQA2; verified 2026-10-10"
+    n_questions: 199
+    split: self-hashed       # HF 只提供 train split
+    revision: see data/manifests/litqa2.json source_sha256
+
+  - name: protocolqa
+    path: vendor/ProtocolQA/train-00000-of-00001.parquet
+    reuse: dataset
+    declared_license: CC-BY-SA-4.0
+    license_source: "Hugging Face dataset card futurehouse/lab-bench, ProtocolQA; verified 2026-10-10"
+    n_questions: 108
+    split: self-hashed
+    revision: see data/manifests/protocolqa.json source_sha256
+
+  - name: suppqa
+    path: vendor/SuppQA
+    reuse: dataset
+    declared_license: UNVERIFIED
+    note: "主线不使用"
+
+  - name: scholarqa-bench
+    path: vendor/ScholarQABench-main
+    reuse: dataset
+    declared_license: ODC-BY (aggregate data)
+    license_source: "README.md data section; local repository LICENSE is MIT for code"
+    code_license_source: ScholarQABench-main/LICENSE
+    code_license_sha256: 59127d0cd4e59e4d25a489b9a66828b7fb21407f778da299206af55741c45a9a
+    note: "M4 跨域迁移终评，冻结"
+
+  - name: deep-research-bench
+    path: vendor/deep_research_bench-main
+    reuse: external-anchor
+    declared_license: Apache-2.0 (repository code)
+    license_source: deep_research_bench-main/LICENSE
+    license_sha256: c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4
+    license_note: "README badge says MIT, conflicting with LICENSE and official repository license; dataset/evaluation content terms need separate audit"
+    note: "FACT 抓取需 Jina API，非零成本；M4 先做 10 题成本试点"

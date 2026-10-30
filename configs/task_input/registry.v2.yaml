@@ -1,0 +1,65 @@
+# Proposed M1 task-input inventory. Kept separate from v1 because adding Skills
+# changes routing and therefore creates a new runtime protocol/baseline.
+release_id: task-input-baseline-v2
+skills:
+  - name: litqa-literature-synthesis
+    group: G-main
+    license: SELF-AUTHORED
+    description: Answer biomedical multiple-choice questions from scientific material supplied with the task.
+    triggers: [gene, protein, cell, assay, inhibitor, antibiotic, resistance, mutation, expression, pathway, organism, clinical, patient, study, reported, evidence]
+    path: configs/task_input/skills/litqa-literature-synthesis.md
+  - name: protocol-troubleshooting
+    group: G-main
+    license: SELF-AUTHORED
+    description: Diagnose unexpected wet-lab protocol results from supplied protocol details, reagents, concentrations, times, and temperatures.
+    triggers: [protocol, step, reagent, buffer, concentration, centrifuge, temperature, pellet, isolation, wash, storage]
+    path: skills/main/protocol-troubleshooting.md
+  - name: evidence-citation-check
+    group: G-verify
+    frozen: true
+    license: SELF-AUTHORED
+    description: Verify citations when a task asks whether a claim is supported by a supplied source identifier.
+    triggers: [citation, cite, source, reference, verify, support, claim]
+    path: configs/task_input/skills/evidence-citation-check.md
+  - name: statistical-interpretation
+    group: G-adj
+    license: SELF-AUTHORED
+    description: Interpret statistics reported in supplied material, including confidence intervals, effects, sample size, and controls.
+    triggers: [p-value, significance, confidence, interval, effect, sample, replicate, control, statistics, cohort]
+    path: skills/main/statistical-interpretation.md
+  - name: terminology-normalization
+    group: G-common
+    license: SELF-AUTHORED
+    description: Match entity names and aliases within task-provided material before comparing answer options.
+    triggers: [synonym, alias, symbol, nomenclature, naming, term, terminology, abbreviation]
+    path: configs/task_input/skills/terminology-normalization.md
+  - name: answer-formatting
+    group: G-common
+    license: SELF-AUTHORED
+    description: Format an already-decided multiple-choice answer and its supplied source identifier without changing the answer.
+    triggers: [format, final, answer, option, choice, multiple-choice, output]
+    path: configs/task_input/skills/answer-formatting.md
+  - name: clinical-study-design
+    group: G-main
+    license: SELF-AUTHORED
+    description: Interpret study design, randomization, comparison groups, endpoints, and eligibility criteria stated in supplied biomedical material.
+    triggers: [randomized, randomization, trial, comparator, endpoint, inclusion, exclusion, control-group]
+    path: configs/task_input/skills/clinical-study-design.md
+  - name: effect-estimate-interpretation
+    group: G-adj
+    license: SELF-AUTHORED
+    description: Interpret reported effect estimates and adjusted analyses while preserving direction, uncertainty, and the comparison being tested.
+    triggers: [odds-ratio, hazard-ratio, relative-risk, adjusted, multivariable, association, confidence-interval, p-value]
+    path: configs/task_input/skills/effect-estimate-interpretation.md
+  - name: population-scope
+    group: G-main
+    license: SELF-AUTHORED
+    description: Keep conclusions within the population, subgroup, age range, and eligibility criteria represented in supplied evidence.
+    triggers: [subgroup, population, participants, patients, adults, children, eligibility, demographic]
+    path: configs/task_input/skills/population-scope.md
+  - name: mixed-results-synthesis
+    group: G-main
+    license: SELF-AUTHORED
+    description: Classify mixed findings across outcomes, interventions, conditions, or study groups without collapsing them into a universal yes or no.
+    triggers: [conflicting, heterogeneous, mixed-results, outcomes, interventions, conditions, inconsistent, subgroup-results]
+    path: configs/task_input/skills/mixed-results-synthesis.md

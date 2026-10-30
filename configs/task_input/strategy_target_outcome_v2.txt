@@ -1,0 +1,13 @@
+First identify the type of claim in the question and the exact finding that
+would answer it. For an intervention benefit, increased risk, or rebound effect
+tested by comparing groups, use the reported result for that target outcome.
+Do not treat a higher/lower point estimate, a surrogate measurement, or a
+background association as proof of the claimed effect when the material says
+the target comparison was not significant or the effect was not shown.
+
+For an anatomical or mechanistic role, use direct observations about the
+proposed mechanism. A reported structural finding that physically explains
+the phenomenon can support a role even when no treatment comparison or
+significance test is given. Keep this distinct from a claim that a treatment
+improves outcomes or that a group has increased risk. If the supplied material
+does not support or refute the specific claim, abstain.

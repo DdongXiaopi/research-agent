@@ -1,0 +1,3 @@
+# Optional document records adapter; Apache-2.0 upstream, no PyMuPDF extra.
+paper-qa==2026.8.12
+pypdf==6.21.4

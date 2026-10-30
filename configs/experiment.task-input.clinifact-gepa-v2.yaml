@@ -1,0 +1,175 @@
+spec_version: '1.2'
+domain_profile: biomedical
+models:
+  task:
+    provider: http
+    model_id: Qwen/Qwen3-8B
+    base_url: https://api.siliconflow.cn/v1
+    api_key_env: SILICONFLOW_API_KEY
+    temperature: 0
+    max_tokens: 256
+    enable_thinking: false
+    timeout: 120
+    max_retries: 1
+    max_context_chars: 30000
+    max_doc_chars: 1500
+  reflection:
+    provider: http
+    model_id: Qwen/Qwen3-8B
+    base_url: https://api.siliconflow.cn/v1
+    api_key_env: SILICONFLOW_API_KEY
+    temperature: 0.7
+    max_tokens: 800
+    enable_thinking: false
+    timeout: 120
+    max_retries: 1
+  judge:
+    provider: fake
+    model_id: exact-match-v1
+runtime:
+  provider: pi
+  disable_pi_builtin_tools:
+  - bash
+  - powershell
+  - edit
+  - write
+  max_model_calls: 12
+  max_tool_calls: 20
+  fake_noise: 0.0
+  input_mode: task_input
+  task_input_max_chars: 30000
+  pi_provider_max_retries: 1
+  pi_timeout_max_attempts: 1
+  pi_request_cooldown_seconds: 5
+tools:
+  active:
+  - workspace.read
+  - artifact.write
+  - academic.search
+  - fulltext.resolve
+  - citation.verify
+  raw_shell: deny
+  raw_network: allow
+retrieval:
+  backend: offline-fixture
+  top_k: 3
+  corpus_version: real-v3
+skills:
+  release_id: task-input-clinifact-v3
+  registry: artifacts/sandboxes/clinifact-mipro-v18-20261014/releases/task-input-clinifact-v3/skills/registry.yaml
+  mutable_groups:
+  - G-main
+  - G-adj
+  - G-common
+  - G-crystallized
+  frozen_groups:
+  - G-verify
+  crystallized_group: G-crystallized
+  description_evolution_groups:
+  - G-main
+  - G-adj
+  recall_min_score: 2
+evaluation:
+  manifests: []
+  datasets:
+  - clinifact_fixed_abstract
+  transfer_datasets: []
+  primary_final_datasets: []
+  final_holdout_access: evaluator_only
+  sealed_pairing: false
+  seed: 20260924
+  seeds:
+  - 20260924
+  - 20260925
+  - 20260926
+  require_split_freeze: true
+  insufficient_option: true
+  max_tasks_per_round: 40
+  main_metric: accuracy
+  primary_axis: accuracy
+  primary_axis_tolerance_pp: 0.0
+  bootstrap:
+    B: 10000
+    rng_seed: 20260924
+evolution:
+  allowed_artifacts:
+  - system_prompt
+  - skill_description
+  - skill_body
+  - new_skill
+  max_candidates_per_round: 5
+  max_rounds: 8
+  reflection_backend: llm
+  reflection_max_attempts: 2
+  behavior_channels:
+    enabled: true
+    owner:
+      prompt:
+      - rerank
+      - citation
+      skill_body:
+      - evidence
+      - abstain
+      description:
+      - recall
+    enforce_in_evolution: true
+  gepa:
+    enabled: true
+    budget: light
+    max_metric_calls: 40
+    max_candidate_proposals: 3
+    reflection_minibatch_size: 3
+  crystallization:
+    min_procedure_steps: 3
+    min_trigger_recall: 0.3
+    max_description_similarity: 0.6
+    max_cross_domain_trigger: 0.2
+    max_non_target_trigger: 1.0
+    cross_domain_negative_limit: 0
+gates:
+  static:
+    max_prompt_chars: 8000
+    max_description_chars: 400
+    max_body_chars: 6000
+    min_procedure_steps: 3
+    max_procedure_steps: 12
+    forbidden_patterns:
+    - ignore previous
+    - ignore all previous
+    - disregard the system
+    - rm -rf
+    - 'curl '
+    - 'wget '
+    - bash -c
+    - powershell
+    - send your api key
+    - exfiltrate
+    - disable the guardrail
+    - override the policy
+    require_single_artifact: true
+  accept:
+    require_static_gate: true
+    main_metric_non_regression: true
+    require_human_review: true
+    gate_min_delta_pp: 1.0
+    gate_min_prob_delta_gt_0: 0.9
+    tolerance:
+      cost_pct: 15
+      p95_latency_pct: 20
+      citation_precision_pp: 1.0
+      unsupported_answer_rate_pp: 5.0
+review:
+  release: required
+  final_holdout_unlock: required
+execution:
+  enabled: false
+  max_expr_chars: 400
+  max_nodes: 200
+  max_output_chars: 2000
+  allow_latex: true
+  wsl2:
+    enabled: false
+    note: 高风险执行（任意 Python / TeX 编译）专用；未启用时相关调用显式失败
+privacy:
+  mode: public_only
+  redact_before_persist: true

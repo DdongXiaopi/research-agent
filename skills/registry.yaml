@@ -1,0 +1,66 @@
+# Historical six-Skill source for immutable baseline-v0 and compatibility tests.
+release_id: baseline-v0
+
+skills:
+  - name: litqa-literature-synthesis
+    group: G-main
+    license: SELF-AUTHORED
+    description: >
+      Answer biomedical multiple-choice questions by synthesizing peer-reviewed literature about
+      genes, proteins, cell lines, assays, inhibitors, antibiotics, antibiotic resistance,
+      mutations, expression, pathways, model organisms, and clinical or patient findings.
+    triggers:
+      [gene, protein, cell, assay, inhibitor, antibiotic, antibiotics, resistance, resistant,
+       mutation, expression, pathway, organism, clinical, patient, literature, study, paper,
+       published, reported, evidence, doi]
+    path: skills/main/litqa-literature-synthesis.md
+
+  - name: protocol-troubleshooting
+    group: G-main
+    license: SELF-AUTHORED
+    description: >
+      Diagnose why a wet-lab protocol produced a poor result and identify which step, reagent,
+      buffer, concentration, centrifugation speed, temperature, or incubation change would fix it.
+      Covers cell isolation, PBMC preparation, staining, transfection, culture, and sample storage.
+    triggers:
+      [protocol, step, reagent, buffer, solution, concentration, centrifuge, centrifugation,
+       incubate, temperature, pellet, cells, isolation, wash, resuspend, storage, freeze, protocol]
+    path: skills/main/protocol-troubleshooting.md
+
+  - name: evidence-citation-check
+    group: G-verify
+    frozen: true
+    license: SELF-AUTHORED
+    description: >
+      Before finalizing an answer, verify that each checkable claim is backed by a retrievable
+      source with a DOI or URL, and record the source identifier next to the claim.
+    triggers: [citation, cite, source, doi, reference, verify, support, claim]
+    path: skills/verify/evidence-citation-check.md
+
+  - name: statistical-interpretation
+    group: G-adj
+    license: SELF-AUTHORED
+    description: >
+      Interpret statistical results reported in studies: p-values, confidence intervals, effect
+      sizes, sample size, replicates, controls, and whether a conclusion is supported.
+    triggers: [p-value, significance, confidence, interval, effect, sample, replicate, control,
+               statistics, statistical, cohort, n=]
+    path: skills/main/statistical-interpretation.md
+
+  - name: terminology-normalization
+    group: G-common
+    license: SELF-AUTHORED
+    description: >
+      Normalize gene symbols, protein names, chemical names, and synonyms before searching,
+      so that equivalent terms and historical aliases retrieve the same literature.
+    triggers: [synonym, alias, symbol, nomenclature, naming, term, terminology, abbreviation]
+    path: skills/common/terminology-normalization.md
+
+  - name: answer-formatting
+    group: G-common
+    license: SELF-AUTHORED
+    description: >
+      Produce a concise final answer for a multiple-choice item: state the chosen option, one
+      sentence of justification, and the source identifiers used.
+    triggers: [format, final, answer, option, choice, multiple-choice, output]
+    path: skills/common/answer-formatting.md

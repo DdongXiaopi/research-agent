@@ -1,0 +1,224 @@
+release_id: baseline-v1
+skills:
+- description: 'Answer biomedical multiple-choice questions by synthesizing peer-reviewed
+    literature about genes, proteins, cell lines, assays, inhibitors, antibiotics,
+    antibiotic resistance, mutations, expression, pathways, model organisms, and clinical
+    or patient findings.
+
+    '
+  frozen: false
+  group: G-main
+  license: SELF-AUTHORED
+  name: litqa-literature-synthesis
+  path: artifacts/releases/baseline-v1/skills/bodies/litqa-literature-synthesis.md
+  triggers:
+  - gene
+  - protein
+  - cell
+  - assay
+  - inhibitor
+  - antibiotic
+  - antibiotics
+  - resistance
+  - resistant
+  - mutation
+  - expression
+  - pathway
+  - organism
+  - clinical
+  - patient
+  - literature
+  - study
+  - paper
+  - published
+  - reported
+  - evidence
+  - doi
+- description: 'Diagnose why a wet-lab protocol produced a poor result and identify
+    which step, reagent, buffer, concentration, centrifugation speed, temperature,
+    or incubation change would fix it. Covers cell isolation, PBMC preparation, staining,
+    transfection, culture, and sample storage.
+
+    '
+  frozen: false
+  group: G-main
+  license: SELF-AUTHORED
+  name: protocol-troubleshooting
+  path: artifacts/releases/baseline-v1/skills/bodies/protocol-troubleshooting.md
+  triggers:
+  - protocol
+  - step
+  - reagent
+  - buffer
+  - solution
+  - concentration
+  - centrifuge
+  - centrifugation
+  - incubate
+  - temperature
+  - pellet
+  - cells
+  - isolation
+  - wash
+  - resuspend
+  - storage
+  - freeze
+  - protocol
+- description: 'Before finalizing an answer, verify that each checkable claim is backed
+    by a retrievable source with a DOI or URL, and record the source identifier next
+    to the claim.
+
+    '
+  frozen: true
+  group: G-verify
+  license: SELF-AUTHORED
+  name: evidence-citation-check
+  path: artifacts/releases/baseline-v1/skills/bodies/evidence-citation-check.md
+  triggers:
+  - citation
+  - cite
+  - source
+  - doi
+  - reference
+  - verify
+  - support
+  - claim
+- description: 'Interpret statistical results reported in studies: p-values, confidence
+    intervals, effect sizes, sample size, replicates, controls, and whether a conclusion
+    is supported.
+
+    '
+  frozen: false
+  group: G-adj
+  license: SELF-AUTHORED
+  name: statistical-interpretation
+  path: artifacts/releases/baseline-v1/skills/bodies/statistical-interpretation.md
+  triggers:
+  - p-value
+  - significance
+  - confidence
+  - interval
+  - effect
+  - sample
+  - replicate
+  - control
+  - statistics
+  - statistical
+  - cohort
+  - n=
+- description: 'Normalize gene symbols, protein names, chemical names, and synonyms
+    before searching, so that equivalent terms and historical aliases retrieve the
+    same literature.
+
+    '
+  frozen: false
+  group: G-common
+  license: SELF-AUTHORED
+  name: terminology-normalization
+  path: artifacts/releases/baseline-v1/skills/bodies/terminology-normalization.md
+  triggers:
+  - synonym
+  - alias
+  - symbol
+  - nomenclature
+  - naming
+  - term
+  - terminology
+  - abbreviation
+- description: 'Produce a concise final answer for a multiple-choice item: state the
+    chosen option, one sentence of justification, and the source identifiers used.
+
+    '
+  frozen: false
+  group: G-common
+  license: SELF-AUTHORED
+  name: answer-formatting
+  path: artifacts/releases/baseline-v1/skills/bodies/answer-formatting.md
+  triggers:
+  - format
+  - final
+  - answer
+  - option
+  - choice
+  - multiple-choice
+  - output
+- description: 'Identify the studied population and relevant subgroups, then check
+    whether the supplied findings apply to the population named in the question.
+
+    '
+  frozen: false
+  group: G-main
+  license: SELF-AUTHORED
+  name: population-scope
+  path: artifacts/releases/baseline-v1/skills/bodies/population-scope.md
+  triggers:
+  - population
+  - subgroup
+  - participant
+  - participants
+  - enrolled
+  - eligibility
+  - inclusion
+  - exclusion
+  - demographic
+  - applicability
+- description: 'Reconcile findings that differ across outcomes, interventions, conditions,
+    or study groups while preserving reported disagreement.
+
+    '
+  frozen: false
+  group: G-main
+  license: SELF-AUTHORED
+  name: mixed-results-synthesis
+  path: artifacts/releases/baseline-v1/skills/bodies/mixed-results-synthesis.md
+  triggers:
+  - mixed
+  - conflicting
+  - inconsistent
+  - discordant
+  - outcome
+  - outcomes
+  - intervention
+  - interventions
+  - condition
+  - endpoint
+  - findings
+- description: 'Interpret reported odds, hazard, and relative-risk estimates with
+    their comparator, adjustment, confidence interval, and uncertainty.
+
+    '
+  frozen: false
+  group: G-adj
+  license: SELF-AUTHORED
+  name: effect-estimate-interpretation
+  path: artifacts/releases/baseline-v1/skills/bodies/effect-estimate-interpretation.md
+  triggers:
+  - odds
+  - ratio
+  - hazard
+  - adjusted
+  - estimate
+  - estimates
+  - relative-risk
+  - confidence-interval
+  - association
+- description: 'Identify a biomedical study''s reported design, comparator, endpoint,
+    and participant criteria without treating design labels as outcome evidence.
+
+    '
+  frozen: false
+  group: G-main
+  license: SELF-AUTHORED
+  name: clinical-study-design
+  path: artifacts/releases/baseline-v1/skills/bodies/clinical-study-design.md
+  triggers:
+  - randomized
+  - randomised
+  - observational
+  - comparator
+  - endpoint
+  - prospective
+  - retrospective
+  - inclusion
+  - exclusion
+  - design

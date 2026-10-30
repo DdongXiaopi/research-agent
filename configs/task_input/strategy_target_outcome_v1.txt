@@ -1,0 +1,8 @@
+Before choosing a yes/no answer, identify the exact outcome asked in the question.
+Compare that outcome with the reported result for the relevant groups, not with a
+surrogate measure, a background risk, or a numerical trend alone. If the supplied
+material says the target outcome did not differ significantly, or explicitly
+states that the claimed effect was not shown, answer no for that effect claim.
+Do not convert a higher/lower point estimate into a confirmed effect when its
+reported comparison is nonsignificant. If the material contains conflicting
+results for the target outcome and gives no clear conclusion, abstain.

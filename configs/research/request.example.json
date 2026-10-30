@@ -1,0 +1,15 @@
+{
+  "task_id": "assay-demo",
+  "task_type": "open_research",
+  "query": "根据给定实验记录，哪些结论有直接证据，哪些结论还不能下？",
+  "project_id": "assay-project",
+  "session_id": "session-one",
+  "domain_profile": "biomedical",
+  "tool_allowlist": ["workspace.read", "citation.verify"],
+  "budget": {"max_evidence_chars": 6000, "max_answer_chars": 3000,
+             "max_completion_tokens": 700, "max_physical_requests": 1},
+  "evidence": [{"source_id": "notebook-one",
+    "text": "This is a synthetic notebook entry for a software smoke test. Three technical replicates of a reporter assay gave readings of 12, 13 and 12 arbitrary units. No biological replicates, control condition or calibration standard were included. The measurements alone cannot establish a causal effect or a population-level change.",
+    "url": "", "locator": "Synthetic notebook, entry 1",
+    "retrieved_at": "2026-10-13T00:00:00Z"}]
+}
