@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RSI 科研工作台</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark" aria-hidden="true">R</span><span>RSI <small>科研工作台</small></span></div>
+    <span class="local-label"><span class="dot"></span> 本地工作区</span>
+  </header>
+  <main class="workspace">
+    <aside class="sidebar">
+      <p class="side-title">研究流程</p>
+      <ol id="stages" class="stages" aria-label="任务运行进度">
+        <li data-stage="parse"><span>1</span>解析问题</li>
+        <li data-stage="route_skill"><span>2</span>选择研究方法</li>
+        <li data-stage="retrieve"><span>3</span>检索文献</li>
+        <li data-stage="organize_evidence"><span>4</span>整理证据</li>
+        <li data-stage="answer"><span>5</span>生成回答</li>
+        <li data-stage="verify"><span>6</span>核验引用</li>
+      </ol>
+      <p class="side-note">每次任务都会保存执行轨迹与证据来源，方便回看和复核。</p>
+    </aside>
+    <section class="content">
+      <div class="intro"><div><p class="overline">从问题出发</p><h1>开始一次研究</h1><p>提出一个具体问题，选择研究材料，查看带来源的回答。</p></div><div class="intro-symbol" aria-hidden="true"><span></span><span></span><span></span></div></div>
+      <div class="grid">
+        <section class="panel input-panel" aria-labelledby="question-title">
+          <div class="panel-heading"><h2 id="question-title">研究问题</h2><span>新任务</span></div>
+          <form id="task-form">
+            <label for="query">你想了解什么？</label>
+            <textarea id="query" name="query" rows="4" maxlength="2000" placeholder="例如：这项研究使用了哪些对照组？" required></textarea>
+            <fieldset><legend>选择材料</legend>
+              <div class="source-switch"><label><input type="radio" name="source-mode" value="provided" checked> 自备材料</label><label><input type="radio" name="source-mode" value="search"> 检索文献</label></div>
+            </fieldset>
+            <div id="provided-section"><label for="source-text">粘贴材料</label><textarea id="source-text" rows="7" maxlength="60000" placeholder="粘贴文献摘要、实验记录或其他相关材料。"></textarea><p class="hint">回答会引用材料中的原文片段。</p></div>
+            <fieldset id="search-section" hidden><legend>文献来源</legend><div class="source-options"><label><input type="checkbox" name="provider" value="europe_pmc" checked> Europe PMC</label><label><input type="checkbox" name="provider" value="pubmed"> PubMed</label><label><input type="checkbox" name="provider" value="crossref"> Crossref</label><label><input type="checkbox" name="provider" value="openalex"> OpenAlex</label><label><input type="checkbox" name="provider" value="semantic_scholar"> Semantic Scholar</label></div><p class="hint">使用公开文献元数据和可用摘要。</p></fieldset>
+            <button id="run" class="primary" type="submit">开始研究</button>
+            <p id="task-message" class="message" role="status" aria-live="polite"></p>
+          </form>
+        </section>
+        <section class="panel result-panel" aria-labelledby="result-title">
+          <div class="panel-heading"><h2 id="result-title">研究结果</h2><span id="result-status">等待任务</span></div>
+          <div id="empty-result" class="empty"><div class="empty-mark" aria-hidden="true">✳</div><h3>结果会显示在这里</h3><p>提交问题后，可在这里查看回答、引用和核验结果。</p></div>
+          <div id="result" hidden>
+            <div class="result-summary"><p class="result-label">回答</p><div id="answer" class="answer"></div></div>
+            <div class="evidence-heading"><h3>引用与证据</h3><span id="citation-status"></span></div>
+            <div id="citations" class="citations"></div>
+            <details class="trace-details"><summary>查看执行轨迹</summary><ol id="trace-list"></ol></details>
+            <section class="feedback" aria-labelledby="feedback-title"><h3 id="feedback-title">帮助助手改进</h3><p>记录对本次回答的偏好或纠正。是否用于能力改进由你决定。</p>
+              <form id="feedback-form"><label for="category">反馈类型</label><select id="category"><option value="procedure">方法纠正</option><option value="evidence_fact">事实纠正</option><option value="preference">个人偏好</option></select>
+                <label for="correction">反馈内容</label><textarea id="correction" rows="3" maxlength="8000" required placeholder="描述需要调整的内容"></textarea>
+                <div id="quote-fields" hidden><label for="source-id">来源 ID</label><input id="source-id" type="text" placeholder="例如 user-source"><label for="quote">材料原文</label><textarea id="quote" rows="2" placeholder="粘贴支持纠正的原文"></textarea></div>
+                <label for="reviewer">记录人</label><input id="reviewer" type="text" value="researcher" maxlength="120" required>
+                <label class="consent"><input id="consent" type="checkbox"> 允许将此纠正用于生成待评测的能力候选</label>
+                <button type="submit" class="secondary">保存反馈</button><p id="feedback-message" class="message" role="status" aria-live="polite"></p>
+              </form>
+            </section>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

@@ -17,7 +17,7 @@ from ..runtime.runner import ArtifactState
 from ..util import (REPO_ROOT, now_iso, path, sha256_file, sha256_obj)
 
 _SOURCE_ROOTS = ("src", "scripts", "configs", "skills", "tools/pi-bridge", "tools/docker-worker")
-_SOURCE_SUFFIXES = {".py", ".yaml", ".yml", ".toml", ".txt", ".mjs", ".js", ".json", ".md"}
+_SOURCE_SUFFIXES = {".py", ".yaml", ".yml", ".toml", ".txt", ".mjs", ".js", ".html", ".css", ".json", ".md"}
 _SOURCE_EXCLUDED = {".git", "__pycache__", "node_modules", ".venv"}
 def source_tree_fingerprint() -> dict[str, Any]:
     """Hash executable project sources, including dirty working-tree contents."""

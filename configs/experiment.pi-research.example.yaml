@@ -1,0 +1,161 @@
+# Pi open research example; choose your model, endpoint and API-key environment variable.
+spec_version: '1.2'
+domain_profile: biomedical
+models:
+  task:
+    provider: pi
+    model_id: XingChenAGI/Xing4.0-29B
+    temperature: 0
+    max_context_chars: 30000
+    max_doc_chars: 1500
+    base_url: https://api.siliconflow.cn/v1
+    api_key_env: SILICONFLOW_API_KEY
+  reflection:
+    provider: fake
+    model_id: fake-reflection-v1
+  judge:
+    provider: fake
+    model_id: exact-match-v1
+runtime:
+  provider: pi
+  disable_pi_builtin_tools:
+  - bash
+  - powershell
+  - edit
+  - write
+  max_model_calls: 1
+  max_tool_calls: 20
+  fake_noise: 0.0
+  input_mode: task_input
+  protocol_epoch: public-task-input-v1
+  pi_provider_max_retries: 0
+  pi_timeout_max_attempts: 1
+tools:
+  active:
+  - workspace.read
+  - artifact.write
+  - academic.search
+  - fulltext.resolve
+  - citation.verify
+  raw_shell: deny
+  raw_network: deny
+retrieval:
+  backend: none
+  top_k: 1
+  corpus_version: task-input-fixed-evidence-v1
+  doc_id_scheme: task_input
+skills:
+  release_id: task-input-baseline-v2
+  registry: configs/task_input/registry.v2.yaml
+  mutable_groups:
+  - G-main
+  - G-adj
+  - G-common
+  - G-crystallized
+  frozen_groups:
+  - G-verify
+  crystallized_group: G-crystallized
+  description_evolution_groups:
+  - G-main
+  - G-adj
+  recall_min_score: 2
+evaluation:
+  manifests:
+  - public_example.json
+  datasets:
+  - public_example
+  transfer_datasets: []
+  primary_final_datasets:
+  - public_example
+  final_holdout_access: evaluator_only
+  seed: 20260924
+  seeds:
+  - 20260924
+  - 20260925
+  - 20260926
+  require_split_freeze: true
+  insufficient_option: false
+  max_tasks_per_round: 40
+  main_metric: accuracy
+  bootstrap:
+    B: 10000
+    rng_seed: 20260924
+  sealed_pairing: false
+evolution:
+  allowed_artifacts:
+  - system_prompt
+  - skill_description
+  - skill_body
+  - new_skill
+  max_candidates_per_round: 5
+  max_rounds: 8
+  reflection_backend: deterministic-stub
+  behavior_channels:
+    enabled: true
+    owner:
+      prompt:
+      - rerank
+      - citation
+      skill_body:
+      - evidence
+      - abstain
+      description:
+      - recall
+    enforce_in_evolution: true
+  gepa:
+    enabled: false
+    budget: light
+  crystallization:
+    min_procedure_steps: 3
+    min_trigger_recall: 0.3
+    max_description_similarity: 0.6
+    max_cross_domain_trigger: 0.2
+    max_non_target_trigger: 1.0
+    cross_domain_negative_limit: 0
+gates:
+  static:
+    max_prompt_chars: 8000
+    max_description_chars: 400
+    max_body_chars: 6000
+    min_procedure_steps: 3
+    max_procedure_steps: 12
+    forbidden_patterns:
+    - ignore previous
+    - ignore all previous
+    - disregard the system
+    - rm -rf
+    - 'curl '
+    - 'wget '
+    - bash -c
+    - powershell
+    - send your api key
+    - exfiltrate
+    - disable the guardrail
+    - override the policy
+    require_single_artifact: true
+  accept:
+    require_static_gate: true
+    main_metric_non_regression: true
+    require_human_review: true
+    gate_min_delta_pp: 1.0
+    gate_min_prob_delta_gt_0: 0.9
+    tolerance:
+      cost_pct: 15
+      p95_latency_pct: 20
+      citation_precision_pp: 1.0
+      unsupported_answer_rate_pp: 5.0
+review:
+  release: required
+  final_holdout_unlock: required
+execution:
+  enabled: false
+  max_expr_chars: 400
+  max_nodes: 200
+  max_output_chars: 2000
+  allow_latex: true
+  wsl2:
+    enabled: false
+    note: 高风险执行（任意 Python / TeX 编译）专用；未启用时相关调用显式失败
+privacy:
+  mode: public_only
+  redact_before_persist: true

@@ -20,10 +20,12 @@ import requests
 from ..eval.run_manifest import source_tree_fingerprint
 from ..util import artifacts_path, now_iso, read_json, sha256_obj, write_json
 
-PROVIDERS = ("crossref", "openalex", "semantic_scholar", "unpaywall")
+PROVIDERS = ("crossref", "openalex", "semantic_scholar", "europe_pmc", "pubmed", "unpaywall")
 BASES = {"crossref": "https://api.crossref.org/works",
          "openalex": "https://api.openalex.org/works",
          "semantic_scholar": "https://api.semanticscholar.org/graph/v1/paper",
+         "europe_pmc": "https://www.ebi.ac.uk/europepmc/webservices/rest/search",
+         "pubmed": "https://www.ebi.ac.uk/europepmc/webservices/rest/search",
          "unpaywall": "https://api.unpaywall.org/v2"}
 _DOI = re.compile(r"^10\.\d{4,9}/[^\s<>\x00-\x1f]+$", re.I)
 
@@ -82,6 +84,15 @@ def _record(provider, raw, retrieved_at):
         authors = [a.get("name", "") for a in raw.get("authors", [])]
         abstract, venue = _plain(raw.get("abstract")), raw.get("venue") or ""
         oa_url, oa_license = (raw.get("openAccessPdf") or {}).get("url") or "", ""
+    elif provider in {"europe_pmc", "pubmed"}:
+        doi, title = raw.get("doi"), _plain(raw.get("title"))
+        year_text = raw.get("pubYear")
+        year = int(year_text) if str(year_text or "").isdigit() else None
+        author_list = (raw.get("authorList") or {}).get("author", [])
+        authors = [a.get("fullName", "") for a in author_list]
+        abstract = _plain(raw.get("abstractText"))
+        venue = (raw.get("journalInfo") or {}).get("journal", {}).get("title", "")
+        oa_url, oa_license = "", ""
     else:
         doi, title, year = raw.get("doi"), _plain(raw.get("title")), raw.get("year")
         authors = [" ".join(filter(None, [a.get("given"), a.get("family")])) for a in raw.get("z_authors") or []]
@@ -92,19 +103,32 @@ def _record(provider, raw, retrieved_at):
     if not title:
         raise ValueError("metadata lacks title")
     identity = doi or _plain(raw.get("id") or raw.get("paperId") or title)
-    return {"source_id": "lit-" + sha256_obj([provider, identity])[:20], "provider": provider,
+    if provider in {"europe_pmc", "pubmed"} and not doi:
+        identity = _plain(raw.get("source")) + ":" + identity
+    url = "https://doi.org/" + doi if doi else raw.get("url") or raw.get("id") or ""
+    if provider in {"europe_pmc", "pubmed"} and not doi:
+        source, identifier = str(raw.get("source") or ""), str(raw.get("id") or "")
+        url = ("https://europepmc.org/article/" + quote(source, safe="") + "/" + quote(identifier, safe="")) if source and identifier else ""
+    record = {"source_id": "lit-" + sha256_obj([provider, identity])[:20], "provider": provider,
         "doi": doi, "title": title, "year": year, "authors": [_plain(a) for a in authors if a],
-        "venue": _plain(venue), "abstract": abstract, "url": "https://doi.org/" + doi if doi else raw.get("url") or raw.get("id") or "",
+        "venue": _plain(venue), "abstract": abstract, "url": url,
         "oa_url": oa_url, "oa_license": oa_license, "retrieved_at": retrieved_at,
         "raw_metadata_sha256": sha256_obj(raw), "content_kind": "abstract" if abstract else "metadata",
         "full_text_downloaded": False, "license_scope": "metadata/OA-link; no full-text rights inferred"}
+    if provider in {"europe_pmc", "pubmed"}:
+        record["pmid"] = str(raw.get("pmid") or (raw.get("id") if raw.get("source") == "MED" else "") or "")
+        record["pmcid"] = str(raw.get("pmcid") or "")
+    return record
 
 
 def build_plan(operation, *, query="", doi="", providers=None, limit=5, max_requests=8,
                retries=1, timeout=15, max_response_bytes=2_000_000):
     if operation not in {"discover", "lookup"}:
         raise ValueError("unknown literature operation")
-    providers = list(providers or (PROVIDERS[:-1] if operation == "discover" else PROVIDERS))
+    # PubMed is a subset of Europe PMC; offer it explicitly without duplicating
+    # the same abstracts in the default search and spending another request.
+    defaults = ("crossref", "openalex", "semantic_scholar", "europe_pmc")
+    providers = list(providers or (defaults if operation == "discover" else (*defaults, "unpaywall")))
     if (not providers or len(providers) != len(set(providers)) or set(providers) - set(PROVIDERS)
             or (operation == "discover" and "unpaywall" in providers)):
         raise ValueError("unsupported/duplicate provider; Unpaywall is DOI lookup only")
@@ -140,6 +164,13 @@ def _endpoint(provider, plan):
     if provider == "semantic_scholar":
         fields = "title,year,authors,abstract,venue,externalIds,openAccessPdf,url"
         return BASES[provider] + ("/search" if search else "/DOI:" + doi), {"fields": fields, **({"query": plan["query"], "limit": plan["limit"]} if search else {})}
+    if provider in {"europe_pmc", "pubmed"}:
+        escaped_doi = plan["doi"].replace("\\", "\\\\").replace('"', '\\"')
+        query = plan["query"] if search else 'DOI:"' + escaped_doi + '"'
+        if provider == "pubmed":
+            query = "(" + query + ") AND SRC:MED"
+        return BASES[provider], {"query": query,
+                                 "format": "json", "resultType": "core", "pageSize": plan["limit"]}
     return BASES[provider] + "/" + doi, {"email": os.environ["UNPAYWALL_EMAIL"]}
 
 
@@ -192,13 +223,17 @@ def execute(plan, *, session=None):
                             raise ValueError("response_size_or_deadline")
                         payload.extend(block)
                     raw = json.loads(payload)
-                    if plan["operation"] == "lookup":
+                    if provider in {"europe_pmc", "pubmed"}:
+                        rows = (raw.get("resultList") or {}).get("result", [])
+                    elif plan["operation"] == "lookup":
                         rows = [(raw.get("message") if provider == "crossref" else raw)]
                     else:
                         rows = ((raw.get("message") or {}).get("items", []) if provider == "crossref"
                                 else raw.get("results", []) if provider == "openalex" else raw.get("data", []))
                     if not isinstance(rows, list):
                         raise ValueError("invalid_result_collection")
+                    if provider == "pubmed" and any(row.get("source") != "MED" for row in rows):
+                        raise ValueError("provider_returned_non_pubmed_record")
                     normalized = [_record(provider, row, now_iso()) for row in rows[:plan["limit"]]]
                     if plan["operation"] == "lookup" and any(row["doi"] != plan["doi"] for row in normalized):
                         raise ValueError("provider_returned_different_doi")
@@ -255,9 +290,18 @@ def evidence_from_snapshot(snapshot):
     validate_snapshot(snapshot)
     sources, seen = [], set()
     for row in snapshot["records"]:
-        if not row["abstract"] or (row["doi"] or row["source_id"]) in seen:
+        if not row["abstract"]:
             continue
-        seen.add(row["doi"] or row["source_id"])
+        identities = {"doi:" + row["doi"]} if row["doi"] else set()
+        for key in ("pmid", "pmcid"):
+            if row.get(key):
+                identities.add(key + ":" + str(row[key]).strip().casefold())
+        if not identities:
+            identities.add("source:" + row["source_id"])
+        duplicate = bool(identities & seen)
+        seen.update(identities)
+        if duplicate:
+            continue
         sources.append({"source_id": row["source_id"], "text": row["abstract"], "url": row["url"],
                         "locator": "abstract (" + row["provider"] + ")", "retrieved_at": row["retrieved_at"]})
     return sources

@@ -110,12 +110,14 @@ def _selected_procedure(skill, cfg):
 def effective_config(cfg, limits):
     cfg = copy.deepcopy(cfg)
     provider = str((cfg.get("runtime") or {}).get("provider") or "fake").lower()
-    if provider not in {"fake", "http"}:
-        raise ValueError("open research currently requires the HTTP or extractive offline adapter")
+    if provider not in {"fake", "http", "pi"}:
+        raise ValueError("open research requires the Pi, HTTP, or extractive offline adapter")
     task = cfg.setdefault("models", {}).setdefault("task", {})
     task.update({"cache": False, "max_tokens": limits["max_completion_tokens"],
                  "max_retries": limits["max_physical_requests"], "structured_output": ""})
     task.setdefault("extra_body", {})["response_format"] = copy.deepcopy(_OPEN_RESPONSE_FORMAT)
+    if provider == "pi":
+        cfg.setdefault("runtime", {})["open_research_physical_limit"] = limits["max_physical_requests"]
     return cfg
 
 
@@ -162,8 +164,8 @@ def build_plan(request: TaskRequest, cfg: dict, state=None, *, retrieval_snapsho
         "selected_skill": skill.name if skill else None, "procedure_sha256": sha256_text(procedure),
         "sources": [{"source_id": row["source_id"], "content_sha256": row["content_sha256"],
                      "visible_sha256": sha256_text(row["visible_text"])} for row in visible],
-        "provider": provider, "limits": limits, "logical_request_cap": 1 if provider == "http" else 0,
-        "physical_request_cap": limits["max_physical_requests"] if provider == "http" else 0,
+        "provider": provider, "limits": limits, "logical_request_cap": 1 if provider in {"http", "pi"} else 0,
+        "physical_request_cap": limits["max_physical_requests"] if provider in {"http", "pi"} else 0,
         "model_calls": 0, "retrieval_used": retrieval_snapshot is not None,
         "retrieval_snapshot_sha256": retrieval_snapshot["snapshot_sha256"] if retrieval_snapshot else None,
         "final_holdout_read": False}
@@ -414,6 +416,10 @@ def execute(request: TaskRequest, cfg: dict, expected_plan_sha256: str, *, state
                 "limitations": []})
             cost, mode = {}, "extractive_smoke_only"
         else:
+            if provider is None and plan["provider"] == "pi":
+                from .pi_research import PiResearchProvider
+                provider = PiResearchProvider(cfg, state, request.task_id, plan["selected_skill"],
+                                              visible, root, ephemeral=evaluator_output is not None)
             provider = provider or build_provider(cfg)
             if not hasattr(provider, "chat_measured"):
                 raise ValueError("open research provider lacks measured free-form calls")
@@ -473,8 +479,11 @@ def execute(request: TaskRequest, cfg: dict, expected_plan_sha256: str, *, state
                     "request_binding_sha256": binding_sha256,
                     "response_content_sha256": sha256_text(output.content),
                 })
-            content, cost, mode = output.content, output.cost, "http_open_research"
-        write_json(raw_output_path, {"content": content, "cost": cost, "mode": mode})
+            content, cost, mode = output.content, output.cost, plan["provider"] + "_open_research"
+        raw_output = {"content": content, "cost": cost, "mode": mode}
+        if plan["provider"] == "pi" and visible and getattr(provider, "trace", None):
+            raw_output["pi_trace"] = provider.trace
+        write_json(raw_output_path, raw_output)
         try:
             status, answer, citations = _parse_answer(content, visible, plan["limits"]["max_answer_chars"])
         except ValueError as parse_error:
@@ -500,7 +509,7 @@ def execute(request: TaskRequest, cfg: dict, expected_plan_sha256: str, *, state
                 trace_ref=str(root / "receipt.json"))
             write_json(root / "response.json", response.to_dict())
             workflow_trace.emit("task.answer.parse_failed", parent_event_id=(
-                request_event["event_id"] if plan["provider"] == "http" and visible
+                request_event["event_id"] if plan["provider"] in {"http", "pi"} and visible
                 else plan_event["event_id"]), error=type(parse_error).__name__, payload={
                     "parse_error": str(parse_error),
                     "raw_model_output_sha256": sha256_file(raw_output_path),
@@ -529,7 +538,7 @@ def execute(request: TaskRequest, cfg: dict, expected_plan_sha256: str, *, state
                 "retrieval_snapshot_sha256": plan["retrieval_snapshot_sha256"]}, trace_ref=str(root / "receipt.json"))
         write_json(root / "response.json", response.to_dict())
         workflow_trace.emit("task.answer.selected", parent_event_id=(
-            request_event["event_id"] if plan["provider"] == "http" and visible
+            request_event["event_id"] if plan["provider"] in {"http", "pi"} and visible
             else plan_event["event_id"]), payload={
                 "status": status, "answer_sha256": sha256_text(answer),
                 "citation_count": len(citations),

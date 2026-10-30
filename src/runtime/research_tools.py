@@ -210,6 +210,22 @@ def audit_open_research_trace(run_dir):
                 or call.get("event_type") == "model.call"
                    and call["payload"].get("response_content_sha256") != sha256_text(raw.get("content", ""))):
             raise ValueError("open research provider call is not bound to its recorded inputs")
+    if raw.get("mode") == "pi_open_research" and raw.get("pi_trace"):
+        pi = raw["pi_trace"]
+        if not pi.get("ephemeral"):
+            from .pi_trace import read_pi_session
+            session_path = Path(pi.get("session_path") or "").resolve()
+            try:
+                session_path.relative_to((root / "pi-sessions").resolve())
+                if sha256_file(session_path) != pi.get("session_sha256"):
+                    raise ValueError("Pi session hash changed")
+                session = read_pi_session(session_path)
+                if (session["session_id"] != pi.get("session_id")
+                        or not any(row.get("role") == "assistant" and row.get("text") == raw.get("content")
+                                   for row in session["messages"])):
+                    raise ValueError("Pi session differs from recorded answer")
+            except (OSError, ValueError) as exc:
+                raise ValueError("open research Pi session verification failed") from exc
     if terminal_status == "completed":
         if (selected[0]["payload"].get("answer_sha256") != sha256_text(response.get("answer", ""))
                 or selected[0]["payload"].get("status") != response.get("status")

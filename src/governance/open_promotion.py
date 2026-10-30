@@ -118,7 +118,7 @@ def _evidence(candidate, cfg, dev_id, gate_id, engineering_only):
     if not engineering_only:
         tolerances = ((cfg.get("gates") or {}).get("accept") or {}).get("tolerance") or {}
         for name, quantities in (("development", de), ("selection", ge)):
-            measured = cfg["runtime"]["provider"] == "http" and all(
+            measured = cfg["runtime"]["provider"] in {"http", "pi"} and all(
                 all(value["measured"]) for value in quantities.values())
             checks.append({"check": name + "_measured_cost_and_latency", "passed": bool(measured)})
             for metric, field, default in (("cost", "cost_pct", 15), ("latency", "p95_latency_pct", 20)):

@@ -11,7 +11,7 @@ RSI（Research Self-Improvement）将文献与用户材料问答、引用核验�
 ## 项目能做什么
 
 - **科研问答与引用**：使用实验记录、文献摘录等材料回答问题，记录回答、引用片段和执行轨迹，并核验引用与原始材料的对应关系。
-- **文献发现与全文阅读**：检索和核验文献元数据，获取开放获取全文，将文档片段接入问答；支持本地文档检索和 PaperQA 文档接口。
+- **文献发现与全文阅读**：从 Crossref、OpenAlex、Semantic Scholar、Europe PMC 和 PubMed 发现文献并核验元数据，获取开放获取全文，将文档片段接入问答；支持本地文档检索和 PaperQA 文档接口。
 - **Prompt 与 Skill 进化**：从任务运行与反馈中生成候选，优化系统 Prompt、Skill 描述和正文，或提出新的 Skill。
 - **评测与实验**：准备自有任务数据，按来源分组并冻结数据分区，运行多 seed 对照、消融和独立开放评测，生成可追踪的报告。
 - **审查、发布与回滚**：将候选、评测结果和审查决定绑定到版本，通过门禁后发布，并可回滚到已有版本。
@@ -85,6 +85,16 @@ plan=$(.venv/bin/python scripts/research_assistant.py answer --request configs/r
 
 完整配置与在线模型使用方法见[开始使用](docs/GETTING-STARTED.md)。
 
+### 使用科研工作台
+
+初始化后启动本地界面，在浏览器中打开 `http://127.0.0.1:8765`：
+
+```powershell
+.\.venv\Scripts\python.exe scripts/research_web.py --config configs/experiment.public-task-input.yaml
+```
+
+工作台支持科研问题、材料或文献来源选择，以及回答、引用、六阶段轨迹和反馈查看。安装 Pi bridge 并配置模型后，可使用 `configs/experiment.pi-research.example.yaml`。
+
 ### 3. 体验完整工作流
 
 ```powershell
@@ -108,7 +118,7 @@ plan=$(.venv/bin/python scripts/research_assistant.py answer --request configs/r
 | 检索和阅读文献 | `discover`、`lookup`、`fetch-fulltext`、`answer-documents` | 从文献发现到全文片段问答 |
 | 使用自有任务数据 | `scripts/prepare_public_tasks.py` | 准备 JSONL 任务、来源分组和数据分区 |
 | 运行进化实验 | `scripts/rsi.py` | 执行基线、候选轮次、多 seed 对照和消融 |
-| 将反馈转为能力 | `feedback`、`export-dev`、`propose-skill` | 从研究反馈生成待评测的 Skill 候选 |
+| 将反馈转为能力 | `feedback`、`export-dev`、`propose-candidate` | 从授权反馈生成待评测的 Prompt 或 Skill 候选 |
 | 审查与管理版本 | `promotion-review`、`promotion-publish`、`rollback` | 审查候选、发布版本和回滚 |
 
 查看所有命令：

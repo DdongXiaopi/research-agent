@@ -205,8 +205,8 @@ def build_plan(root, cfg, *, split="dev_optimize", candidate_release=None, candi
         limits = research._limits(type("Limits", (), {"budget": item["budget"]})())
         caps.append(limits["max_physical_requests"])
     provider = str((cfg.get("runtime") or {}).get("provider", "fake"))
-    if provider not in {"http", "fake"}:
-        raise ValueError("open benchmark uses the measured HTTP/free-form adapter")
+    if provider not in {"http", "pi", "fake"}:
+        raise ValueError("open benchmark requires the Pi, HTTP, or offline research adapter")
     plan = {"schema": "open-benchmark-execution-plan-v1", "dataset_sha256": manifest["dataset_sha256"],
         "manifest_sha256": manifest["manifest_sha256"], "split": split, "n_tasks": manifest["splits"][split]["n"],
         "config_sha256": sha256_obj(cfg), "protocol_sha256": config_fingerprint(cfg),
@@ -214,8 +214,8 @@ def build_plan(root, cfg, *, split="dev_optimize", candidate_release=None, candi
         "unpublished_candidate": copy.deepcopy(candidate),
         "arms": {name: {"release_id": state.release_id, "prompt_sha256": sha256_obj(state.system_prompt),
                          "registry_sha256": state.registry.fingerprint()} for name, state in states.items()},
-        "logical_request_cap": len(caps) * len(states) if provider == "http" else 0,
-        "physical_request_cap": sum(caps) * len(states) if provider == "http" else 0,
+        "logical_request_cap": len(caps) * len(states) if provider in {"http", "pi"} else 0,
+        "physical_request_cap": sum(caps) * len(states) if provider in {"http", "pi"} else 0,
         "protected_rows_read_during_preflight": False, "preflight_model_calls": 0,
         "score_policy": "frozen_task_rubric_and_two_context_separated_ai_or_human_reviewers", "final_batch_limit": 2}
     return {**plan, "plan_sha256": sha256_obj(plan)}

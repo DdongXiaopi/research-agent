@@ -27,6 +27,9 @@ ROOT_FILES = {
 }
 PUBLIC_TEST_FILES = {
     "tests/__init__.py", "tests/_sandbox.py", "tests/conftest.py",
+    "tests/integration/__init__.py", "tests/integration/test_europe_pmc_literature.py",
+    "tests/integration/test_pi_open_research.py", "tests/integration/test_feedback_candidates.py",
+    "tests/integration/test_research_web.py",
     "tests/unit/__init__.py", "tests/unit/test_config_schema.py",
     "tests/unit/test_public_data_preflight.py",
     "tests/unit/test_public_capabilities.py", "tests/unit/test_open_promotion_lifecycle.py",
@@ -48,6 +51,11 @@ PUBLIC_TEST_FILES = {
     "tests/unit/test_rsi_e2e_provider_guard.py",
 }
 DOC_FILES = {
+    "docs/FEATURE-INTEGRATION-STATUS.md",
+    "docs/FEATURE-LITERATURE-PLAN.md",
+    "docs/FEATURE-PI-WORKFLOW-PLAN.md",
+    "docs/FEATURE-FRONTEND-PLAN.md",
+    "docs/FEATURE-FEEDBACK-PLAN.md",
     "docs/GETTING-STARTED.md",
     "docs/PUBLIC-DOCKER-WORKER.md",
     "docs/PUBLIC-CAPABILITY-EVIDENCE-2026-10-29.json",
@@ -64,7 +72,7 @@ EXCLUDED = {
     "scripts/snapshot.py",  # local backup destination, outside public runtime
 }
 SOURCE_SUFFIXES = {
-    "src": {".py"},
+    "src": {".py", ".html", ".css", ".js"},
     "scripts": {".py"},
     "tests": {".py"},
     "configs": {".yaml", ".json", ".txt", ".md"},
@@ -77,7 +85,7 @@ FORBIDDEN_PARTS = {
     ".git", ".workbuddy", ".venv", "__pycache__", "node_modules",
     "outputs", ".pytest_cache",
 }
-TEXT_SUFFIXES = {".py", ".mjs", ".js", ".json", ".yaml", ".yml", ".txt", ".md", ".patch", ""}
+TEXT_SUFFIXES = {".py", ".mjs", ".js", ".html", ".css", ".json", ".yaml", ".yml", ".txt", ".md", ".patch", ""}
 SECRET = re.compile(r"\b(?:sk-[A-Za-z0-9_-]{24,}|gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,})\b")
 PERSONAL_PATH = re.compile(r"(?:[A-Za-z]:\\Users\\|E:\\program_resume\\)")
 LOCAL_LINK = re.compile(r"\[[^\]]+\]\(([^)#]+)(?:#[^)]*)?\)")

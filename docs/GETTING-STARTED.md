@@ -80,3 +80,15 @@ $env:RSI_HOME = Join-Path $PWD 'outputs/my-local-run'
 公开的历史聚合摘要在 [证据记录](PUBLIC-EVIDENCE-2026-10-19.json)。运行 `python scripts/verify_public_evidence.py` 可零调用检查摘要内部一致性；若合法持有原始本地收据，还可传 `--private-dir <收尾目录>` 核对文件哈希与数值。公开快照不包含该目录。
 
 `python scripts/smoke_public_task_input.py` 可在一次性公开源码副本中准备合成 JSONL、冻结分区，执行新协议的多 seed、消融和三轮 campaign，并检查封存集泄漏。三轮可能没有候选或发布，演练仅验证调度。`python scripts/smoke_open_promotion.py` 检查反馈→Skill 候选→独立评测→批准→发布→回滚及篡改拒绝，全程零 API。真实 HTTP/Pi 验收使用单独的持久隔离目录，并验证免费模型现价；其结果仅证明工程接线。
+
+## 文献来源与工作台
+
+`discover` 支持 `crossref`、`openalex`、`semantic_scholar`、`europe_pmc` 和 `pubmed`；`pubmed` 通过 Europe PMC 的 `SRC:MED` 子集检索 PubMed 记录。可用摘要按 DOI、PMID 和 PMCID 去重后接入回答。启动本地界面：
+
+```powershell
+.\.venv\Scripts\python.exe scripts/research_web.py --config configs/experiment.public-task-input.yaml
+```
+
+访问 `http://127.0.0.1:8765`。使用 Pi 时，运行 `python scripts/bootstrap_project.py --install-pi`，编辑 `configs/experiment.pi-research.example.yaml` 选择模型和端点，设置配置中的密钥环境变量，再通过 `--config` 指定该文件。命令行六阶段工作流见 `python scripts/research_assistant.py workflow --help`。
+
+要从已授权的反馈创建候选，先使用 `export-dev` 导出开发集，再运行 `propose-candidate --kind system_prompt`、`skill_description`、`skill_body` 或 `new_skill`。已有 Skill 须指定 `--target`；生成需要 HTTP reflection 模型，候选继续经过独立评测和审查。`python scripts/smoke_open_promotion.py --kind skill_body` 可在隔离环境演练完整链路，其他类型可替换 `--kind`。

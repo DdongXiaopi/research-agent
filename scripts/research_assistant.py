@@ -90,6 +90,16 @@ def main(argv=None):
     answer.add_argument("--config", default="configs/experiment.yaml")
     answer.add_argument("--execute", action="store_true")
     answer.add_argument("--expected-plan-sha256")
+    workflow = commands.add_parser("workflow", help="Run the six-stage research workflow")
+    workflow.add_argument("--request", type=Path, required=True)
+    workflow.add_argument("--config", default="configs/experiment.yaml")
+    workflow.add_argument("--providers", nargs="*", default=[])
+    workflow.add_argument("--limit", type=int, default=5)
+    workflow.add_argument("--max-requests", type=int, default=8)
+    workflow.add_argument("--retries", type=int, default=1)
+    workflow.add_argument("--timeout", type=int, default=15)
+    workflow.add_argument("--expected-plan-sha256")
+    workflow.add_argument("--execute", action="store_true")
     feedback = commands.add_parser("feedback")
     feedback.add_argument("--run-dir", type=Path, required=True)
     feedback.add_argument("--category", choices=["preference", "evidence_fact", "procedure"], required=True)
@@ -112,6 +122,13 @@ def main(argv=None):
     proposal.add_argument("--config", required=True)
     proposal.add_argument("--expected-plan-sha256")
     proposal.add_argument("--execute", action="store_true")
+    candidate_proposal = commands.add_parser("propose-candidate")
+    candidate_proposal.add_argument("--development-set", type=Path, required=True)
+    candidate_proposal.add_argument("--config", required=True)
+    candidate_proposal.add_argument("--kind", choices=["system_prompt", "skill_description", "skill_body", "new_skill"], required=True)
+    candidate_proposal.add_argument("--target", default="")
+    candidate_proposal.add_argument("--expected-plan-sha256")
+    candidate_proposal.add_argument("--execute", action="store_true")
     promote = commands.add_parser("promotion-request")
     promote.add_argument("--candidate", type=Path, required=True)
     promote.add_argument("--config", required=True)
@@ -165,7 +182,17 @@ def main(argv=None):
     score.add_argument("--evaluation-id", required=True)
     score.add_argument("--annotations", type=Path, required=True)
     args = parser.parse_args(argv)
-    if args.command in {"benchmark-ai-rubric", "benchmark-ai-annotate"}:
+    if args.command == "workflow":
+        from src.runtime import research_workflow
+        cfg, value = load_config(args.config), read_json(args.request)
+        options = {"providers": args.providers, "limit": args.limit, "max_requests": args.max_requests,
+                   "retries": args.retries, "timeout": args.timeout}
+        plan = research_workflow.build_plan(value, cfg, **options)
+        write_json(artifacts_path("research_plans", plan["plan_sha256"] + ".json"), plan)
+        _check_execution_plan(args, plan)
+        result = (research_workflow.execute(value, cfg, plan["plan_sha256"], **options)
+                  if args.execute else {"status": "validated_not_run", **plan})
+    elif args.command in {"benchmark-ai-rubric", "benchmark-ai-annotate"}:
         from src.eval import ai_annotation, open_benchmark
         cfg = load_config(args.config)
         inputs = read_json(args.input) if args.command == "benchmark-ai-rubric" else open_benchmark.annotation_packet(args.evaluation_id)
@@ -258,6 +285,22 @@ def main(argv=None):
     elif args.command == "assess":
         result = assess_annotations(read_json(args.response), read_json(args.rubric), read_json(args.annotations))
         write_json(args.output, result)
+    elif args.command == "propose-candidate":
+        dataset, cfg = read_json(args.development_set), load_config(args.config)
+        if args.kind == "new_skill":
+            if args.target:
+                raise ValueError("new Skill proposal does not accept an existing target")
+            from src.evolution.feedback_skill import build_feedback_skill_plan, execute_feedback_skill
+            plan = build_feedback_skill_plan(dataset, cfg)
+            run = lambda: execute_feedback_skill(dataset, cfg, plan["plan_sha256"])
+        else:
+            from src.evolution import feedback_candidate
+            target = args.target or ("system_prompt" if args.kind == "system_prompt" else "")
+            plan = feedback_candidate.build_plan(dataset, cfg, kind=args.kind, artifact_id=target)
+            run = lambda: feedback_candidate.execute(dataset, cfg, plan["plan_sha256"], kind=args.kind, artifact_id=target)
+        write_json(artifacts_path("research_plans", plan["plan_sha256"] + ".json"), plan)
+        _check_execution_plan(args, plan)
+        result = run() if args.execute else plan
     elif args.command == "propose-skill":
         from src.evolution.feedback_skill import build_feedback_skill_plan, execute_feedback_skill
         dataset, cfg = read_json(args.development_set), load_config(args.config)

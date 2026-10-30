@@ -12,6 +12,7 @@ def test_feedback_to_approved_release_rollback_and_tamper_guards():
     assert result.returncode == 0, result.stderr
     report = json.loads(result.stdout)
     assert report["status"] == "ok" and report["tamper_guards_verified"]
+    assert report["candidate_kind"] == "new_skill"
     assert report["physical_http_attempts"] == 0
     assert report["published_release"] != report["rollback_release"]
     assert report["engineering_only"] and not report["scientific_gain_claim"]

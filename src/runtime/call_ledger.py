@@ -23,7 +23,7 @@ _LOCK = threading.Lock()
 _ACTIVE_OPERATION: ContextVar[str | None] = ContextVar("rsi_active_call_operation", default=None)
 _ALLOWED_COMPONENTS = {
     "ai_evaluation",
-    "open_research_answer", "skill_crystallization_proposer",
+    "open_research_answer", "skill_crystallization_proposer", "feedback_candidate_proposer",
     "task_answer", "skill_router", "mipro_proposer", "gepa_reflection",
     "grounding", "provider_http",
 }

@@ -14,10 +14,11 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 
-def run_fixture(*, live=False, model_id="Qwen/Qwen3-8B", authored_candidate=False):
+def run_fixture(*, live=False, model_id="Qwen/Qwen3-8B", authored_candidate=False, kind="new_skill"):
     from src.config import load_config
     from src.contracts.types import Candidate
     from src.evolution.feedback_skill import build_feedback_skill_plan, execute_feedback_skill
+    from src.evolution import feedback_candidate
     from src.evolution.session_feedback import record_feedback, export_development
     from src.eval import open_benchmark as benchmark
     from src.governance import release, review
@@ -41,7 +42,11 @@ def run_fixture(*, live=False, model_id="Qwen/Qwen3-8B", authored_candidate=Fals
         'unless the Research procedure section contains the literal token CONTROL_ACCEPTANCE. '
         'When that token is present, answer the research question from the supplied sources with an exact quote.', encoding="utf-8")
     registry = assets / "registry.yaml"
-    registry.write_text(yaml.safe_dump({"release_id": "public-open-base", "skills": []}), encoding="utf-8")
+    existing_skills = [] if kind in {"new_skill", "system_prompt"} else [{
+        "name": "protocol-troubleshooting", "group": "G-main", "license": "SELF-AUTHORED",
+        "description": "Diagnose laboratory protocol control problems.",
+        "triggers": ["assay", "control"], "path": "skills/main/protocol-troubleshooting.md"}]
+    registry.write_text(yaml.safe_dump({"release_id": "public-open-base", "skills": existing_skills}), encoding="utf-8")
     release.init_baseline(prompt_path=prompt, registry_path=registry, release_id="public-open-base")
     cfg = load_config(str(ROOT / "configs/experiment.public-task-input.yaml"))
     model = {"provider": "http", "model_id": model_id if live else "fixture-model",
@@ -69,10 +74,28 @@ def run_fixture(*, live=False, model_id="Qwen/Qwen3-8B", authored_candidate=Fals
     skill = {"name": "synthetic-control-check", "description": "Decode missing controls in synthetic assay evidence",
              "triggers": ["assay", "control", "synthetic"],
              "body": "## Procedure\n1. CONTROL_ACCEPTANCE: Read the missing-control code in the supplied assay evidence.\n2. Apply the learned codebook: K7Q4 denotes a control group.\n3. State that a control group was missing and cite the exact source quote that contains K7Q4."}
-    proposal_provider = (None if live and not authored_candidate else
-                         SimpleNamespace(chat=lambda *args, **kwargs: json.dumps(skill)))
-    proposal_plan = build_feedback_skill_plan(development, cfg)
-    proposal = execute_feedback_skill(development, cfg, proposal_plan["plan_sha256"], provider=proposal_provider)
+    if kind == "new_skill":
+        proposal_provider = (None if live and not authored_candidate else
+                             SimpleNamespace(chat=lambda *args, **kwargs: json.dumps(skill)))
+        proposal_plan = build_feedback_skill_plan(development, cfg)
+        proposal = execute_feedback_skill(development, cfg, proposal_plan["plan_sha256"], provider=proposal_provider)
+    else:
+        if live:
+            raise ValueError("multi-artifact acceptance uses synthetic engineering fixtures")
+        from src.runtime.skills import load_body
+        state = release.load_state()
+        target = "system_prompt" if kind == "system_prompt" else "protocol-troubleshooting"
+        old = (state.system_prompt if kind == "system_prompt" else
+               state.registry.get(target).description if kind == "skill_description" else load_body(state.registry.get(target)))
+        content = (" ".join(old.split()) + " Check the study population." if kind == "skill_description" else
+                   old.rstrip() + ("\n4. Check the study population." if kind == "skill_body" else "\nCheck the study population."))
+        provider = SimpleNamespace(chat_measured=lambda *args, **kwargs:
+            SimpleNamespace(content=json.dumps({"content": content}), cost={"usd": 0}))
+        proposal_plan = feedback_candidate.build_plan(development, cfg, kind=kind, artifact_id=target, state=state)
+        proposal = feedback_candidate.execute(development, cfg, proposal_plan["plan_sha256"],
+                                              kind=kind, artifact_id=target, state=state, provider=provider)
+        if proposal["status"] != "proposed_pending_independent_evaluation":
+            raise ValueError("fixture candidate did not pass static gate")
     candidate_path = Path(proposal["proposal_dir"]) / "candidate.json"
     candidate = read_json(candidate_path)
     partitions = {}
@@ -119,10 +142,10 @@ def run_fixture(*, live=False, model_id="Qwen/Qwen3-8B", authored_candidate=Fals
             passed = "control group" in answer_text.lower()
             values = []
             for reviewer in ("synthetic-rule-a", "synthetic-rule-b"):
-                for kind, identity in [("rubric", "missing-control")] + [
+                for annotation_kind, identity in [("rubric", "missing-control")] + [
                         ("citation", str(i)) for i in range(len(response["citations"]))]:
-                    values.append({"reviewer": reviewer, "source": "engineering_fixture", "kind": kind,
-                        "item_id": identity, "supported": passed if kind == "rubric" else True,
+                    values.append({"reviewer": reviewer, "source": "engineering_fixture", "kind": annotation_kind,
+                        "item_id": identity, "supported": passed if annotation_kind == "rubric" else True,
                         "rationale": "Deterministic synthetic control fixture; no human or calibrated semantic judgment.",
                         "response_sha256": case["response_sha256"], "rubric_sha256": case["rubric_sha256"]})
             annotations["cases"].append({"case_id": case["case_id"], "annotations": values})
@@ -175,7 +198,7 @@ def run_fixture(*, live=False, model_id="Qwen/Qwen3-8B", authored_candidate=Fals
     accounting = [summarize_ledger(path) for path in artifacts_path().rglob("call-ledger.jsonl")]
     summary = {"status": "ok", "engineering_only": True, "live_http": live,
         "candidate_origin": "authored_engineering_fixture" if authored_candidate or not live else "live_model_proposal",
-        "feedback_candidate": candidate["candidate_id"], "published_release": published,
+        "feedback_candidate": candidate["candidate_id"], "candidate_kind": candidate["artifact_type"], "published_release": published,
         "rollback_release": release.current_release_id(), "evaluations": evaluations,
         "physical_http_attempts": sum(x["physical_http_attempts"] for x in accounting),
         "unknown_requests": sum(x["logical_incomplete"] + x["physical_incomplete"] for x in accounting),
@@ -190,6 +213,7 @@ def main():
     parser.add_argument("--live", action="store_true")
     parser.add_argument("--authored-candidate", action="store_true",
                         help="Use a labeled authored feedback proposal while task answers use the live model")
+    parser.add_argument("--kind", choices=["new_skill", "system_prompt", "skill_description", "skill_body"], default="new_skill")
     parser.add_argument("--model-id", choices=["Qwen/Qwen3-8B", "Qwen/Qwen2.5-7B-Instruct", "THUDM/GLM-4-9B-0414"], default="Qwen/Qwen3-8B")
     parser.add_argument("--run-home", type=Path)
     args = parser.parse_args()
@@ -197,7 +221,7 @@ def main():
         if os.environ.get("RSI_OPEN_ACCEPTANCE_WORKER") != "1":
             parser.error("worker must be started by the isolated launcher")
         print(json.dumps(run_fixture(live=args.live, model_id=args.model_id,
-                                     authored_candidate=args.authored_candidate), sort_keys=True))
+                                     authored_candidate=args.authored_candidate, kind=args.kind), sort_keys=True))
         return 0
     if args.live and args.run_home is None:
         parser.error("live acceptance requires a new persistent --run-home")
@@ -207,7 +231,7 @@ def main():
             parser.error("acceptance run-home must not exist")
         env = {**os.environ, "RSI_HOME": str(home), "RSI_OPEN_ACCEPTANCE_WORKER": "1",
                "PYTHONIOENCODING": "utf-8"}
-        command = [sys.executable, str(Path(__file__).resolve()), "--worker", "--model-id", args.model_id]
+        command = [sys.executable, str(Path(__file__).resolve()), "--worker", "--model-id", args.model_id, "--kind", args.kind]
         if args.live:
             command.append("--live")
         if args.authored_candidate:
